@@ -15,7 +15,7 @@ So here is an AL version of Import-Export data file, with offer superior ability
 2. Partial company data export/import (you may exclude tables eg logs and archives to fasten the process)
 3. Support schema difference with automatic matching suggestion 
 4. Error handling - the process continue on next data chunk when an error occur
-5. Asissted page for import/export and GUI to follow the process clear progression
+5. Assisted page for import/export and GUI to follow the process progression
 6. Optimised for multithreading fast performance
 7. Controlled file size using combination of binary encoding, column oriented storage and block-sorting compression
 
@@ -25,7 +25,7 @@ So here is an AL version of Import-Export data file, with offer superior ability
 - Original system fields (Created/Modified/At/By) can not be imported in SaaS
 - Performance : cloud import is proceed with AL "Record", significantly slower than On-Premise version using database bulk copy with DLL.
 
-### Export 
+## Export 
 
 Search for the page "Assisted company data export"
 Steps :
@@ -37,9 +37,11 @@ Steps :
 
 ![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
 
-### Import 
+## Import 
 
-Search for the page "Assisted company data import"
+Create a new blank company first.
+
+Then search for the page "Assisted company data import"
 
 1. Upload an archive file. The system read metadata and prepare tables files to import.
 2. Select the destination company to import and review Archive file informations.
@@ -47,11 +49,8 @@ Search for the page "Assisted company data import"
 4. Enable truncate table before importing for a clean import.
 5. Review summyarz, lower the number of threads if you want to reduce server workload. press "Start Import"
 
-![NAV Import Data Matching](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Match.png?raw=true)
 
-![NAV Import Data Multi-Threads Progression](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Progress.png?raw=true)
-
-### Deployment
+## Deployment
 
 - For SaaS deployment, in app.json remove "ONPREM" pragma :
   ```
@@ -64,7 +63,7 @@ Search for the page "Assisted company data import"
 - For On-Premise deployment : first copy DLLs from .netpackages in your Business Central Addin folder. Restart Business Central instance. Then publish the app.
 - Recommanded : To get **much better compression**, copy bsc.exe in the addin folder. This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12)
 
-### Archive Format 
+## Archive File Format 
 
 ```
 Archive.zip/
@@ -80,8 +79,8 @@ Archive.zip/
 ...
 ```
 
-**How data is encoded**
-- Row-oriented
+### How data is encoded
+- **Row-oriented files**
 
 The system automatically use this format for tables with < 100 records.
 
@@ -91,7 +90,7 @@ Each table record is written as a "row" composed of all the field binary values.
 
 The file does not contain any metadata, separators or control character.
 
-- Column oriented (parquet-like format)
+- **Column oriented files (parquet-like format)**
 
 The system automatically use this format for tables with >= 100 records.
 
@@ -103,13 +102,13 @@ When the process end, any columns without any value are skipped and not written 
 
 The final full TAR archive is compressed as a single file, achieving better ratio than row-oriented file.
 
-- Table chunking
+- **Table chunking**
 
 A size limit is fixed per file in order to limit maximal RAM usage, and distribute database comits.
 
 When the in memory export file reach the limit, it is closed, compressed then stored and a new file start for the ongoing table records.
 
-- Optimal binary encoding
+- **Optimal binary encoding**
 
 This option reduce the number of bytes needed to write numericals. This reduce the average RAM usage during import/export and final file size when using Gzip compression.
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
@@ -117,12 +116,12 @@ See original repository : [AL-Optimal-Binary-Encoding details](https://github.co
 This option is not recommanded when using block sorting compression because it may degrade compression ratio with no other significant gain.
 
 
-* Compression
-    * Auto (On-Premise) : Use zStd for small file up to 1 MB, then Libbsc for larger file. Max. file chunk is 150 MB. Optimal binary encoding is disabled. System fields included.
-    * Auto (SaaS) : Use Gzip. Max. file chunk is 200 MB. Optimal binary encoding is enabled. System fields skiped.
-    * Gzip : Use gzip at "optimal" level
-    * zStd : use zStandard at medium level (12/22)
-    * Libbsc : Use block sorting compression at maximum level (2/2)
+- **Compression**
+    - Auto (On-Premise) : Use zStd for small file up to 1 MB, then Libbsc for larger file. Max. file chunk is 150 MB. Optimal binary encoding is disabled. System fields included.
+    - Auto (SaaS) : Use Gzip. Max. file chunk is 200 MB. Optimal binary encoding is enabled. System fields skiped.
+    - Gzip : Use gzip at "optimal" level
+    - zStd : use zStandard at medium level (12/22)
+    - Libbsc : Use block sorting compression at maximum level (2/2)
 
 
 
