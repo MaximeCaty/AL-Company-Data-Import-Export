@@ -35,9 +35,7 @@ Steps :
 4. Review the list of tables that will be exported. You can remove table from this list.
 5. Review summary, lower the number of threads if you want to reduce server workload, press "Start Export"
 
-![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-Data.png?raw=true)
-
-![NAV Export Data Multi-Threads Progression](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-GUI.png?raw=true)
+![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
 
 ### Import 
 
