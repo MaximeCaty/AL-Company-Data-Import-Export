@@ -75,12 +75,21 @@ This executable can be found here [GitHub Libbsc release](https://github.com/Ily
 
 This chapter explain how the data is structured inside archive files.
 
-**Options offered in the assisted export :**
-    - **Auto (On-Premise)** : Use zStd for small (<1Mb) files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
+### Options offered in the assisted export
+
+
+    - **Auto (On-Premise)** : Use zStd for < 1Mb files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
+
     - **Auto (SaaS)** : Use Gzip, Max. file chunk is 200 MB. Optimal binary encoding = **enabled**, System fields =**skiped**
+
     - **Gzip** : Compress with gzip at "optimal" level, other options are manual
+
     - **zStd** : Compress with zStandard at medium level (12/22), other options are manual
+
     - **Libbsc** : Compress with bsc.exe at medium level (1/2), other options are manual
+
+
+### Archive structure 
 ```
 Archive.zip/
 |   datameta.json      // definition of tables schemas, files ansd general info
@@ -95,12 +104,14 @@ Archive.zip/
 ...
 ```
 
+
 ### How data is encoded
 
 All business central data are written in binary format. 
 The data is not human readable, but allow faster performance and smaller files than text based data such as CSV. 
 **Binaries stream only contain table data without any headers or separators**, the stream is read in the exact same logic than when it was created, absed on the exported table schema. A single byte difference will throw an error when importing.
 To enforce the data integrity, an **MD5 hash is verified after each file is decompressed**. 
+
 
 - **Row-oriented encoding**
 
