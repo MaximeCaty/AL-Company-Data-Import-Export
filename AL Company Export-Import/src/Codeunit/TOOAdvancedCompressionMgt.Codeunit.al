@@ -1,0 +1,261 @@
+codeunit 51002 "TOO Advanced Compression Mgt."
+{
+    procedure TextToEnum(CompressionModeText: Text) Compression: Enum "TOO Compression Algo."
+    begin
+        case CompressionModeText.ToLower().Trim() of
+            '1', 'gzip', 'gz':
+                Compression := Compression::Gzip;
+#if ONPREM
+            '3', 'zstandard', 'zst':
+                Compression := Compression::zStandard;
+            '4', 'libbsc', 'bsc':
+                Compression := Compression::libbsc;
+#endif
+            '5', 'auto':
+                Compression := Compression::"Auto (On-Premise)";
+        end;
+    end;
+    #region Gen Comp/Dec
+    procedure Compress(InputStream: Instream; OutputStream: OutStream; CompressMode: enum "TOO Compression Algo.")
+    var
+        CompressMgt: Codeunit "Data Compression";
+    begin
+        case CompressMode of
+
+            CompressMode::None:
+                CopyStream(OutputStream, InputStream);
+
+            CompressMode::Gzip:
+                CompressMgt.GZipCompress(InputStream, OutputStream);
+
+#if ONPREM
+            CompressMode::zStandard:
+                ZStandardCompressStream(InputStream, OutputStream, 12); // Default level is 3 (1 - 19) : 3 = "very fast", 9 = "optimal", 19-22 = ultra
+
+            CompressMode::libbsc:
+                LibbscCompressStream(InputStream, OutputStream, 1); // Default level is 1 (0, 1 or 2) 2 have the best ratio, 0 and 1 does not have significent speed difference
+#endif
+            else
+                error('Compression method "%1" is not supported', CompressMode);
+        end
+    end;
+
+    procedure Decompress(InputStream: Instream; OutputStream: OutStream; CompressMode: enum "TOO Compression Algo.")
+    var
+        CompressMgt: Codeunit "Data Compression";
+    begin
+        InputStream.ResetPosition();
+        case CompressMode of
+
+            CompressMode::None:
+                CopyStream(OutputStream, InputStream);
+
+            CompressMode::Gzip:
+                CompressMgt.GZipDecompress(InputStream, OutputStream);
+
+#if ONPREM
+            CompressMode::zStandard:
+                ZstandardDecompressStream(InputStream, OutputStream);
+
+            CompressMode::libbsc:
+                LibbscDecompressStream(InputStream, OutputStream);
+#endif
+            else
+                error('Compression method unsupported');
+        end
+    end;
+
+    #endregion
+
+
+    #region Libbsc
+#if ONPREM
+    procedure LibbscCompressStream(InStream: InStream; OutStream: OutStream; CompressionLevel: Integer) CompressedSize: Integer
+    var
+        CompressedFile: File;
+        FileOutStr: OutStream;
+    begin
+        InitBsc();
+
+        // Save the stream to a temp file on the server
+        if Erase(TempFileName) then;
+        CompressedFile.WriteMode(true);
+        if not CompressedFile.Create(TempFileName) then
+            Error('Unable to create file %1', TempFileName);
+        CompressedFile.CreateOutStream(FileOutStr);
+        InStream.ResetPosition();
+        CopyStream(FileOutStr, InStream);
+        CompressedFile.Close();
+
+        // Prepare bsc compression command (using 50MB max block size)
+        BscProcessStartInfo.Arguments := STRSUBSTNO('e "%1" "%2" -e%3 -p -b50', TempFileName, TempFileName + '.bsc', CompressionLevel);
+        BscProcess.StartInfo := BscProcessStartInfo;
+
+        // Start process and wait
+        if not BscProcess.Start() then begin
+            if Erase(TempFileName) then;
+            Error('Failed to start bsc.exe process.');
+        end;
+        BscProcess.WaitForExit();
+
+        // Remove input file
+        if Erase(TempFileName) then;
+
+        if BscProcess.ExitCode() <> 0 then begin
+            if Erase(TempFileName + '.bsc') then; // remove output if any
+            Error('Compression process failed. Exit code: %1', BscProcess.ExitCode());
+        end;
+        BscProcess.Close();
+
+        // Read the output file in blob
+        CompressedFile.Open(TempFileName + '.bsc');
+        CompressedFile.CreateInStream(InStream);
+        CopyStream(OutStream, InStream);
+        CompressedFile.Close();
+        if Erase(TempFileName + '.bsc') then;
+    end;
+
+    procedure LibbscDecompressStream(InStream: InStream; OutStream: OutStream) DecompressedSize: Integer
+    var
+        DecompressedFile: File;
+        FileOutStr: OutStream;
+    begin
+        InitBsc();
+
+        // Save the stream to a temp file on the server
+        if Erase(TempFileName) then;
+        DecompressedFile.WriteMode(true);
+        if not DecompressedFile.Create(TempFileName) then
+            Error('Unable to create file %1', TempFileName);
+        DecompressedFile.CreateOutStream(FileOutStr);
+        InStream.ResetPosition();
+        CopyStream(FileOutStr, InStream);
+        DecompressedFile.Close();
+
+        // Run bsc decompression command
+        BscProcessStartInfo.Arguments := STRSUBSTNO('d "%1" "%2"', TempFileName, TempFileName + '.dec');
+        BscProcess.StartInfo := BscProcessStartInfo;
+
+        // Start process and wait
+        if not BscProcess.Start() then begin
+            if Erase(TempFileName) then;
+            Error('Failed to start bsc.exe process.');
+        end;
+
+        BscProcess.WaitForExit();
+
+        if Erase(TempFileName) then;
+
+        if BscProcess.ExitCode() <> 0 then begin
+            if Erase(TempFileName + '.dec') then;
+            Error('Decompression process failed. Exit code: %1', BscProcess.ExitCode());
+        end;
+        BscProcess.Close();
+
+        // Read decompressed file into OutStream
+        DecompressedFile.Open(TempFileName + '.dec');
+        DecompressedFile.CreateInStream(InStream);
+        CopyStream(OutStream, InStream);
+        DecompressedFile.Close();
+        if Erase(TempFileName + '.dec') then;
+    end;
+
+    local procedure InitBsc()
+    var
+        fileMgt: Codeunit "File Management";
+    begin
+        //if BscPath = '' then begin
+        BscPath := System.ApplicationPath();
+        BscPath += 'Add-ins\bsc.exe';
+        if not Exists(BscPath) then
+            if not Exists(System.ApplicationPath() + 'bsc.exe') then
+                Error('Unable to locate the libbsc executable (bsc.exe). The program should be placed in addin folder : %1', System.ApplicationPath());
+
+        // look for ram disk
+        if Exists('R:\Temp') then
+            TempFileName := 'R:\Temp\libbsc' + DELCHR(Format(CreateGuid()), '=', '{} -') + '.tmp'
+        else
+            TempFileName := fileMgt.ServerTempFileName('');
+        if Erase(TempFileName) then; // in case last batch bugged
+
+        BscProcess := BscProcess.Process();
+        BscProcessStartInfo := BscProcessStartInfo.ProcessStartInfo();
+        BscProcessStartInfo.FileName := BscPath;
+        BscProcessStartInfo.UseShellExecute := false;
+        BscProcessStartInfo.CreateNoWindow := true;
+        BscProcess.StartInfo := BscProcessStartInfo;
+        //end;
+    end;
+#endif
+    #endregion
+
+    #region ZStandard
+#if ONPREM
+    procedure ZstandardCompressStream(InStream: InStream; OutStream: OutStream; CompressionLevel: Integer)
+    var
+        DotNetByte: DotNet Byte;
+        DotNetArray: DotNet Array;
+        CompressedStream: Dotnet MemoryStream;
+        Compressed: DotNet Array;
+        DotNetStream: DotNet Stream;
+        Compressor: DotNet TOOZstdCompressor;
+        CompressionOptions: DotNet TOOZstdCompressionOptions;
+    begin
+        DotNetStream := InStream;
+        DotNetByte := 0;
+        DotNetArray := DotNetArray.CreateInstance(DotNetByte.GetType(), InStream.Length());
+        DotNetStream.Position := 0;
+        DotNetStream.Read(DotNetArray, 0, InStream.Length());
+
+        CompressionOptions := CompressionOptions.CompressionOptions(CompressionLevel);
+        Compressor := Compressor.Compressor(CompressionOptions);
+        Compressed := Compressor.Wrap(DotNetArray);
+        Compressor.Dispose();
+        Clear(DotNetArray);
+
+        // Wrap compressed data into .NET MemoryStream
+        CompressedStream := CompressedStream.MemoryStream(Compressed);
+
+        // Reset position before copy
+        CompressedStream.Position := 0;
+        CompressedStream.CopyTo(OutStream);
+    end;
+
+    procedure ZstandardDecompressStream(InStream: InStream; OutStream: OutStream)
+    var
+        DotNetStream: Dotnet Stream;
+        DotNetByte: DotNet Byte;
+        DotNetArray: DotNet Array;
+        Decompressed: DotNet Array;
+        Decompressor: DotNet TOOZstdDecompressor;
+        OutMemStream: Dotnet MemoryStream;
+    begin
+        DotNetByte := 0;
+        DotNetStream := InStream;
+
+        // Convert InStream to byte[]
+        DotNetArray := DotNetArray.CreateInstance(DotNetByte.GetType(), InStream.Length);
+        DotNetStream.Position := 0;
+        DotNetStream.Read(DotNetArray, 0, InStream.Length);
+        DotNetStream.Dispose();
+
+        // Deocmpress
+        Decompressor := Decompressor.Decompressor();
+        Decompressed := Decompressor.Unwrap(DotNetArray);
+
+        // Wrap decompressed array into a stream
+        OutMemStream := OutMemStream.MemoryStream(Decompressed);
+        Decompressor.Dispose(); // Dispose compressor 
+        OutMemStream.CopyTo(OutStream);
+    end;
+#endif
+    #endregion
+
+    var
+#if ONPREM
+        BscPath: Text;
+        TempFileName: Text;
+        BscProcess: DotNet TOOProcess;
+        BscProcessStartInfo: Dotnet TOOProcessStartInfo;
+#endif
+}
