@@ -4,7 +4,7 @@
 
 Remember when we could use this NAV  "Import/Export Data File" top copy company betwen production and test environment ?
 
-![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/NavExportData.png?raw=true)
+![Legacy Company Data Import Export](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/NavExportData.png?raw=true)
 
 This does not exists anymore in Business Central. 
 Only an old powershell command remain and is very unconvenient to use 
@@ -19,11 +19,14 @@ So here is an AL version of Import-Export data file, with offer superior ability
 6. **Optimised performance** with multithreading
 8. **Restricted file size** using combination of binary encoding, column oriented storage and advanced compression
 
+
 ### Usage SaaS vs On-Premise Limitations
 
-- **File Size** : much bigger file in SaaS, as it use Gzip while OnPremise can use more efficient compression (~40% difference)
-- **Performance** : Cloud import using AL "Record" insert, is about 3x slower than On-Premise when using direct SQL bulk insert DLL.
-- **System Fields** : Can't be imported in SaaS (filled with current user/datetime). Can be import On-Premise with SQL bulk insert DLL.
+*The app does not support Saas yet : we use "Table Information" to get real data size insight, this table have scope = OnPrem. Feel free to adapt the code if you like to use it on Cloud.*
+- **File Size** : much bigger file in SaaS as it use Gzip, while OnPremise can use more efficient compressor (~40% difference with Libbsc)
+- **Performance** : Cloud import using native AL inserts, is about 3x slower than doing direct SQL bulk insert with On-Premise DLL.
+- **System Fields** : Can't be imported in SaaS (created at/by filled by current user). We can import it On-Premise using direct SQL bulk insert.
+
 
 ## Export 
 
@@ -38,6 +41,7 @@ Steps :
 
 ![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
 
+
 ## Import 
 
 Create a new blank company first.
@@ -46,9 +50,18 @@ Then search for the page "Assisted company data import"
 
 1. Upload an archive file. The system read metadata and prepare tables files to import.
 2. Select the destination company to import and review Archive file informations.
-3. Review the list of table to import and matching status. For each table you can review field matching individualy and adapt the default suggestion.
+3. Review the list of table to import and matching status. For each table you can review field matching individualy and change the default suggestion.
 4. Enable truncate table before importing for a clean import.
 5. Review summyarz, lower the number of threads if you want to reduce server workload. press "Start Import"
+
+![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Match.png?raw=true)
+
+*You can change table mapping manually at this step. Drill down on the field column to change a table field mapping details.*
+
+![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Progress-Page.png?raw=true)
+
+*Import progress can be either show on a progrress dialog or with this separated page, showing each thread progression. An action allow you to stop all threads.*
+
 
 
 ## Deployment & Installation
@@ -70,6 +83,8 @@ in ```app.json``` remove "ONPREM" pragma :
 
 - **Recommanded for much better compression :** copy bsc.exe in the Busienss Central Addin folder.  The app will use it when available to further reduce file size.
 This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
+
+
 
 ## Archive File Format & Encoding
 
@@ -142,6 +157,7 @@ At the export end, empty columns are ignored therefore reducing the file size.
 
 The final TAR file is compressed as one single file, achieving better ratio than row-oriented file, due to better data-pattern groupment.
 
+
 ## Table chunking
 
 A size limit is fixed per file in order to limit RAM usage, and distribute database comits.
@@ -151,15 +167,16 @@ Note that using Libbsc compression consume ~5x the file size in RAM (multiplied 
 
 When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
 
+
 ## Optimal binary encoding
 
-Reduce the number of bytes needed to write numericals values. 
+Use ZigZag to reduce the size of binary numerical values such as Integer, Decimal, Date ect.
 
-This option allow to reduce final file size when using basic compressor such as Gzip :
+This option offer a small size reduction on final gziped file and also reduce the ram usage when procssing files.
 
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-**This option is not recommanded when using Libbsc compression** because it can lead to increased final file size, with uncecessary processing overhead.
+**This option is not recommanded when using Libbsc compression**, it lead to increased final file size with uncecessary processing overhead.
 
 
 
