@@ -144,19 +144,22 @@ The final TAR file is compressed as one single file, achieving better ratio than
 
 ## Table chunking
 
-A size limit is fixed per file in order to limit maximal RAM usage, and distribute database comits.
+A size limit is fixed per file in order to limit RAM usage, and distribute database comits.
+When a table export reach the size limit, the file is closedm, compressed and a new stream begin for ongoing record.
 
-When the in memory export file reach the limit, it is closed, compressed then stored and a new file start for the ongoing table records.
+Note that using Libbsc compression consume ~5x the file size in RAM (multiplied by threads if concurrent compression).
+
+When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
 
 ## Optimal binary encoding
 
 Reduce the number of bytes needed to write numericals values. 
 
-This option allow to reduce final file size with basic compressor such as Gzip :
+This option allow to reduce final file size when using basic compressor such as Gzip :
 
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-**This option is not recommanded when using Libbsc compression** because it can increase the final file size with uncecessary processing overhead.
+**This option is not recommanded when using Libbsc compression** because it can lead to increased final file size, with uncecessary processing overhead.
 
 
 
