@@ -108,38 +108,55 @@ Archive.zip/
 ### How data is encoded
 
 All business central data are written in binary format. 
+
 The data is not human readable, but allow faster performance and smaller files than text based data such as CSV. 
-**Binaries stream only contain table data without any headers or separators**, the stream is read in the exact same logic than when it was created, absed on the exported table schema. A single byte difference will throw an error when importing.
+
+**Binaries stream contain only table data**, without any headers or separators. 
+The stream is read with exact same logic than it was created, based on the exported table schema. A single bit difference will throw an error when importing.
+
 To enforce the data integrity, an **MD5 hash is verified after each file is decompressed**. 
 
 
-- **Row-oriented encoding**
+## Row-oriented
 
 The system automatically use this format for tables with < 100 records.
-Row-oriented is better suited for small table because it does not have the column managment overhead.
+
+**Row-oriented is better suited for small table**, because it does not have the column managment overhead.
+
 Each table record is written as a "row" composed of all the field binary values.
+
 The file does not contain any metadata, separators or control character.
 
-- **Column oriented encoding (parquet-like format)**
 
-The system automatically use this format for tables with >= 100 records.
-Column-oriented is better suited for large table, because it increase compression and improve import speed when there is empty columns.
-Each column is a separate binary stream that are stored in a TAR archive, along with a .json storing connections of column file-table field.
-When the process end, any columns without any value are skipped and not written in the archive.
-The final full TAR archive is compressed as a single file, achieving better ratio than row-oriented file.
+## Column oriented (parquet-like format)
 
-- **Table chunking**
+The system automatically use this format when enabled, for tables with >= 100 records.
+
+**Column-oriented is better suited for large table**, it increase compression ratio and improve import speed when some columns are empty or unused.
+
+Each columns are stored as separate binary stream inside a TAR archive. A json file is stored along in the TAR to retrieve columns definition.
+
+When exporting column-orentied data, the program automaticaly detect empty column.
+
+At the export end, empty columns are ignored therefore reducing the file size.
+
+The final TAR file is compressed as one single file, achieving better ratio than row-oriented file, due to better data-pattern groupment.
+
+## Table chunking
 
 A size limit is fixed per file in order to limit maximal RAM usage, and distribute database comits.
 
 When the in memory export file reach the limit, it is closed, compressed then stored and a new file start for the ongoing table records.
 
-- **Optimal binary encoding**
+## Optimal binary encoding
 
-This option reduce the number of bytes needed to write numericals. This reduce the average RAM usage during import/export and final file size when using Gzip compression.
+Reduce the number of bytes needed to write numericals values. 
+
+This option allow to reduce final file size with basic compressor such as Gzip :
+
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-This option is not recommanded when using block sorting compression because it may degrade compression ratio with no other significant gain.
+**This option is not recommanded when using Libbsc compression** because it can increase the final file size with uncecessary processing overhead.
 
 
 
