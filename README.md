@@ -1,3 +1,4 @@
+
 # AL Company Data-Import-Export
 
 
@@ -11,29 +12,29 @@ Only an old powershell command remain and is very unconvenient to use
 
 So here is an AL version of Import-Export data file, with offer superior ability than the legacy version.
 
-1. Copy company across different instances (including OnPrem to Cloud or Cloud to OnPrem)
-2. Partial company data export/import (you may exclude tables eg logs and archives to fasten the process)
-3. Support schema difference with automatic matching suggestion 
-4. Error handling - the process continue on next data chunk when an error occur
-5. Assisted page for import/export and GUI to follow the process progression
-6. Optimised for multithreading fast performance
-7. Controlled file size using combination of binary encoding, column oriented storage and block-sorting compression
+2. **Partial company data** selection possible for export/import (you may exclude tables like logs to limit data size)
+3. **Support schema difference** at import : auto suggest table and field matching with manual control
+4. **Assisted page** for import/export with GUI process progression
+5. **Error handling** : the process continue on next data chunk when an error occur
+6. **Optimised performance** with multithreading
+8. **Restricted file size** using combination of binary encoding, column oriented storage and advanced compression
 
-### SaaS Limitations
+### Usage SaaS vs On-Premise Limitations
 
-- Support only gzip compression : lower compression ratio than Libbsc available On-Premise
-- Original system fields (Created/Modified/At/By) can not be imported in SaaS
-- Performance : cloud import is proceed with AL "Record", significantly slower than On-Premise version using database bulk copy with DLL.
+- **File Size** : much bigger file in SaaS, as it use Gzip while OnPremise can use more efficient compression (~40% difference)
+- **Performance** : Cloud import using AL "Record" insert, is about 3x slower than On-Premise when using direct SQL bulk insert DLL.
+- **System Fields** : Can't be imported in SaaS (filled with current user/datetime). Can be import On-Premise with SQL bulk insert DLL.
 
 ## Export 
 
-Search for the page "Assisted company data export"
+Search for the page "Assisted company data export" :
+
 Steps :
-1. Select the company to export. Estimation of file size and export are calculated.
-2. Choose general data export rule : classified data, system fields, global data, logs, archive.
-3. Select archive technical data format. Leave "Auto" for the optimal performance/file size ratio.
-4. Review the list of tables that will be exported. You can remove table from this list.
-5. Review summary, lower the number of threads if you want to reduce server workload, press "Start Export"
+1. Select the company to export. Estimation of file size and export are calculated for On-Prem configuration.
+2. Choose data selection rule : classified data, system fields, global data, logs, archive.
+4. Archive format, leave "Auto" for the optimal performance/file size ratio.
+5. Review the list of tables that will be exported. You can remove table from this list.
+6. Review summary, lower the number of threads if you want to reduce server workload, press "Start Export"
 
 ![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
 
@@ -50,56 +51,70 @@ Then search for the page "Assisted company data import"
 5. Review summyarz, lower the number of threads if you want to reduce server workload. press "Start Import"
 
 
-## Deployment
+## Deployment & Installation
 
-- For SaaS deployment, in app.json remove "ONPREM" pragma :
+- **SaaS** :
+in ```app.json``` remove "ONPREM" pragma :
   ```
   "preprocessorSymbols": [
     "ONPREM"
   ]
   ```
-  You can package the app in cloud compatible version then manualy upload it in your instance. 
+  You can then package the app in cloud compatible version 
+  And manualy upload the app in your instance. 
 
-- For On-Premise deployment : first copy DLLs from .netpackages in your Business Central Addin folder. Restart Business Central instance. Then publish the app.
-- Recommanded : To get **much better compression**, copy bsc.exe in the addin folder. This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12)
+-  **On-Premise** : 
+1. Copy DLLs from ```.netpackages``` in your Business Central Addin folder. 
+2. Restart Business Central instance. 
+3. Then publish the app with the "ONPREM" pragma
 
-## Archive File Format 
+- **Recommanded for much better compression :** copy bsc.exe in the Busienss Central Addin folder.  The app will use it when available to further reduce file size.
+This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
 
+## Archive File Format & Encoding
+
+This chapter explain how the data is structured inside archive files.
+
+**Options offered in the assisted export :**
+    - **Auto (On-Premise)** : Use zStd for small (<1Mb) files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
+    - **Auto (SaaS)** : Use Gzip, Max. file chunk is 200 MB. Optimal binary encoding = **enabled**, System fields =**skiped**
+    - **Gzip** : Compress with gzip at "optimal" level, other options are manual
+    - **zStd** : Compress with zStandard at medium level (12/22), other options are manual
+    - **Libbsc** : Compress with bsc.exe at medium level (1/2), other options are manual
 ```
 Archive.zip/
-|   datameta.json      // tables schema and files info.
-|   Table1_File1.bsc   // Table chunk, row-oriented binary 
-|   Table1_File2.bsc   // Table chunk, row-oriented binary
-|   Table2_File1.bsc   // Table chunk, row-oriented binary
+|   datameta.json      // definition of tables schemas, files ansd general info
+|   Table1_File1.gzip  // Table chunk, row-oriented binary 
+|   Table1_File2.gzip  // Table chunk, row-oriented binary
+|   Table2_File1.gzip  // Table chunk, row-oriented binary
 ...
-|   Table_File3.colstore.bsc/   // Table chunk, column-oriented TAR file
-|   |   +-- metadata.json       // field-column file info.
-|   |   +-- Column_1.bin        // table column binary data
+|   Table18_File1.colstore.bsc/  // Table chunk, column-oriented, compressed TAR file
+|   |   +-- columns.json         // field-column file info.
+|   |   +-- Column_1.bin         // table column binary data
 |   |   +-- Column_2.bin
 ...
 ```
 
 ### How data is encoded
-- **Row-oriented files**
+
+All business central data are written in binary format. 
+The data is not human readable, but allow faster performance and smaller files than text based data such as CSV. 
+**Binaries stream only contain table data without any headers or separators**, the stream is read in the exact same logic than when it was created, absed on the exported table schema. A single byte difference will throw an error when importing.
+To enforce the data integrity, an **MD5 hash is verified after each file is decompressed**. 
+
+- **Row-oriented encoding**
 
 The system automatically use this format for tables with < 100 records.
-
 Row-oriented is better suited for small table because it does not have the column managment overhead.
-
 Each table record is written as a "row" composed of all the field binary values.
-
 The file does not contain any metadata, separators or control character.
 
-- **Column oriented files (parquet-like format)**
+- **Column oriented encoding (parquet-like format)**
 
 The system automatically use this format for tables with >= 100 records.
-
 Column-oriented is better suited for large table, because it increase compression and improve import speed when there is empty columns.
-
 Each column is a separate binary stream that are stored in a TAR archive, along with a .json storing connections of column file-table field.
-
 When the process end, any columns without any value are skipped and not written in the archive.
-
 The final full TAR archive is compressed as a single file, achieving better ratio than row-oriented file.
 
 - **Table chunking**
@@ -114,14 +129,6 @@ This option reduce the number of bytes needed to write numericals. This reduce t
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
 This option is not recommanded when using block sorting compression because it may degrade compression ratio with no other significant gain.
-
-
-- **Compression**
-    - Auto (On-Premise) : Use zStd for small file up to 1 MB, then Libbsc for larger file. Max. file chunk is 150 MB. Optimal binary encoding is disabled. System fields included.
-    - Auto (SaaS) : Use Gzip. Max. file chunk is 200 MB. Optimal binary encoding is enabled. System fields skiped.
-    - Gzip : Use gzip at "optimal" level
-    - zStd : use zStandard at medium level (12/22)
-    - Libbsc : Use block sorting compression at maximum level (2/2)
 
 
 
