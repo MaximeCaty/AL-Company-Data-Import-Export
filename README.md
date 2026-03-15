@@ -78,15 +78,15 @@ This chapter explain how the data is structured inside archive files.
 ### Options offered in the assisted export
 
 
-    - **Auto (On-Premise)** : Use zStd for < 1Mb files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
+  - **Auto (On-Premise)** : Use zStd for < 1Mb files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
 
-    - **Auto (SaaS)** : Use Gzip, Max. file chunk is 200 MB. Optimal binary encoding = **enabled**, System fields =**skiped**
+  - **Auto (SaaS)** : Use Gzip, Max. file chunk is 200 MB. Optimal binary encoding = **enabled**, System fields =**skiped**
 
-    - **Gzip** : Compress with gzip at "optimal" level, other options are manual
+  - **Gzip** : Compress with gzip at "optimal" level, other options are manual
 
-    - **zStd** : Compress with zStandard at medium level (12/22), other options are manual
+  - **zStd** : Compress with zStandard at medium level (12/22), other options are manual
 
-    - **Libbsc** : Compress with bsc.exe at medium level (1/2), other options are manual
+  - **Libbsc** : Compress with bsc.exe at medium level (1/2), other options are manual
 
 
 ### Archive structure 
