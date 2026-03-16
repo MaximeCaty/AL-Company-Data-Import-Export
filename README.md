@@ -139,9 +139,9 @@ All business central data are written in binary format, allowing faster parsing 
 ### Table chunking
 
 A size limit is fixed per file in order to limit RAM usage, and distribute database comits.
-When a table export reach the size limit, the file is closedm, compressed and a new stream begin for ongoing record.
+When a stream reach the size limit, the file is closed, compressed and a new stream begin for ongoing records.
 
-Note that using Libbsc compression consume ~5x the file size in RAM (multiplied by threads if concurrent compression).
+Note that using Libbsc compression require much free RAM : ~5x the file size, multiplied by threads.
 
 When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
 
