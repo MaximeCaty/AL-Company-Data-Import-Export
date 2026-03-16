@@ -152,17 +152,17 @@ The file does not contain any metadata, separators or control character.
 
 ## Column oriented (parquet-like format)
 
-The system automatically use this format when enabled, for tables with >= 100 records.
+The system automatically use this format for tables with >= 100 records. I recommand to alway keep this option enabled.
 
-**Column-oriented is better suited for large table**, it increase compression ratio and improve import speed when some columns are empty or unused.
+**Column-oriented is better suited for large table**, increasing import speed and reducing file size.
 
-Each columns are stored as separate binary stream inside a TAR archive. A json file is stored along in the TAR to retrieve columns definition.
+Each columns are stored as separate binary stream inside a TAR archive. A json file is stored along to retrieve columns definitions.
 
-When exporting column-orentied data, the program automaticaly detect empty column.
+While exporting column-orentied data, the program keep track of empty column that only contain BC default values.
 
-At the export end, empty columns are ignored therefore reducing the file size.
+When export end, empty columns are ignored, they're not wrote in the TAR file.
 
-The final TAR file is compressed as one single file, achieving better ratio than row-oriented file, due to better data-pattern groupment.
+The final TAR file is compressed as one single file, achieving better ratio than row-oriented file due to data-type groupment.
 
 
 ## Table chunking
