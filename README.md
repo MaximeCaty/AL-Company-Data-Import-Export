@@ -2,7 +2,7 @@
 # AL Company Data-Import-Export
 
 
-Remember when we could use this NAV  "Import/Export Data File" top copy company betwen production and test environment ?
+Remember when we could use this NAV  "Import/Export Data File" to copy specific company across instances ?
 
 ![Legacy Company Data Import Export](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/NavExportData.png?raw=true)
 
