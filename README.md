@@ -6,10 +6,10 @@ Use this app to copy a company across different instances, without replacing the
 
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
-| Partial table selection  | ❌          | ✅                               |
+| Partial table selection  | ❌ per scope          | ✅ per table                               |
 | Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
-| UI Visibility            | ❌          | ✅ Assisted setup + Per-thread progression |
-| Error recovery           | ❌ full rollback | ✅ Log+Continues to next chunk    |
+| UI Visibility            | ❌ freeze         | ✅ Assisted setup + Per-thread progression |
+| Error recovery           | ❌ full rollback | ✅ Log and continues to next chunk    |
 | Multithreaded processing | ❌          | ✅                               |
 | Tight file size          | ❌ basic compression | ✅ Column-oriented + zStd/libbsc |
 
