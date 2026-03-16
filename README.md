@@ -143,14 +143,12 @@ All business central data are written in binary format.
 The data is not human readable, but allow faster performance and smaller files than text based data such as CSV. 
 
 **Binaries stream contain only table data**, without any headers or separators. 
-The stream is read with exact same logic than it was created, based on the exported table schema. A single bit difference will throw an error when importing.
-
-To enforce the data integrity, an **MD5 hash is verified after each file is decompressed**. 
+The stream is read with exact same logic than it was created.
 
  - Row-oriented — used for small tables (< 100 rows); simple and low-overhead
  - Column-oriented — used for large tables (≥ 100 rows); better compression ratio and faster imports; empty columns are automatically skipped (detected based on BC default values)
    - Compressed TAR archive, containing each column as separate binary streams + json with columns definitions
- - MD5 hash verification after each decompressed file to ensure integrity
+ - MD5 hash verification after each file decompressed to ensure integrity
 
 ![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/row-vs-column-format.webp?raw=true)
  
