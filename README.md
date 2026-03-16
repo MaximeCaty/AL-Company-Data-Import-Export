@@ -68,18 +68,6 @@ Then search for the page "Assisted company data import"
 
 ## Deployment & Installation
 
-- **SaaS** :
-
-*Cloud support is yet to be finalized*
-
-in ```app.json``` remove "ONPREM" pragma :
-  ```
-  "preprocessorSymbols": [
-    "ONPREM"
-  ]
-  ```
-  You can then package the app in cloud compatible version 
-  And manualy upload the app in your instance. 
 
 -  **On-Premise** : 
 1. Copy DLLs from ```.netpackages``` in your Business Central Addin folder. 
@@ -90,6 +78,18 @@ in ```app.json``` remove "ONPREM" pragma :
 This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
 
 
+- **SaaS** :
+
+*Cloud support is yet to be finalized*
+
+in ```app.json``` remove "ONPREM" pragma :
+  ```
+  "preprocessorSymbols": [
+    "ONPREM"
+  ]
+  ```
+  "Table Information" OnPrem scope need to be solved to publish it on SaaS
+  
 
 ## Archive File Format & Encoding
 
