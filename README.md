@@ -1,16 +1,9 @@
 
 # AL Company Data-Import-Export
 
+Offer AL replacement for NAV legacy "Import / Export Data File".
+Use this app to copy a company across instances, without replacing the whole database.
 
-Remember when we could use this NAV  "Import/Export Data File" to copy specific company across instances ?
-
-![Legacy Company Data Import Export](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/NavExportData.png?raw=true)
-
-This does not exists anymore in Business Central. 
-Only an old powershell command remain and is very unconvenient to use 
-(Slow, no visible progression, fail at the first schema difference)
-
-So here is an AL version of Import-Export data file, with offer superior ability than the legacy version.
 
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
