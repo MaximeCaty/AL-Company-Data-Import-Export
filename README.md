@@ -85,7 +85,7 @@ in ```app.json``` remove "ONPREM" pragma :
 2. Restart Business Central instance. 
 3. Then publish the app with the "ONPREM" pragma
 
-- **Recommanded for much better compression :** copy bsc.exe in the Busienss Central Addin folder.  The app will use it when available to further reduce file size.
+- **❗Recommanded for better compression :** to use block sorting compression, copy bsc.exe into Busienss Central Addin folder. The app will automatically use it to further reduce file size.
 This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
 
 
