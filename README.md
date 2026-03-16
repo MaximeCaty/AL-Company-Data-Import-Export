@@ -10,6 +10,15 @@ This does not exists anymore in Business Central.
 Only an old powershell command remain and is very unconvenient to use 
 (Slow, no visible progression, fail at the first schema difference)
 
+| Feature                  | Legacy NAV | This extension                  |
+|--------------------------|------------|---------------------------------|
+| Partial table selection  | ❌          | ✅                               |
+| Schema mismatch handling | ❌          | ✅ Auto-match + manual control   |
+| Progress visibility      | ❌          | ✅ Per-thread live progress      |
+| Error recovery           | ❌          | ✅ Continues on chunk failure    |
+| Multithreaded processing | ❌          | ✅                               |
+| Compressed binary format | ❌          | ✅ Column-oriented + zStd/libbsc |
+
 So here is an AL version of Import-Export data file, with offer superior ability than the legacy version.
 
 2. **Partial company data** selection possible for export/import (you may exclude tables like logs to limit data size)
@@ -22,11 +31,14 @@ So here is an AL version of Import-Export data file, with offer superior ability
 
 ### Usage SaaS vs On-Premise Limitations
 
-*The app does not support Saas yet : we use "Table Information" to get real data size insight, this table have scope = OnPrem. Feel free to adapt the code if you like to use it on Cloud.*
-- **File Size** : much bigger file in SaaS as it use Gzip, while OnPremise can use more efficient compressor (~40% difference with Libbsc)
-- **Performance** : Cloud import using native AL inserts, is about 3x slower than doing direct SQL bulk insert with On-Premise DLL.
-- **System Fields** : Can't be imported in SaaS (created at/by filled by current user). We can import it On-Premise using direct SQL bulk insert.
+*ℹ️ SaaS support is functional but not yet finalized. See Deployment for how to strip the ONPREM pragma. We use "Table Information" to get real data size insight, this table have scope = OnPrem. Feel free to adapt the code if you like to use it on Cloud.*
 
+|                               | SaaS               | On-Premise                           |
+|-------------------------------|--------------------|--------------------------------------|
+| Compression                   | Gzip               | zStd / libbsc (~40% smaller)         |
+| Insert performance            | Native AL (slower) | SQL bulk insert via DLL (~3× faster) |
+| System fields (Created At/By) | ❌ Cannot import    | ✅ Imported via direct SQL            |
+| Table size insight            | ❌ Limited          | ✅ Full (Table Information)           |
 
 ## Export 
 
@@ -96,19 +108,18 @@ This chapter explain how the data is structured inside archive files.
 
 ### Options offered in the assisted export
 
+| Mode              | Algorithm             | Best for             | Optimal binary encoding | Include System fields |
+|-------------------|-----------------------|----------------------|----------------------|----------------------|
+| Auto (On-Premise) | zStd (<1Mb) → libbsc  | Speed + Compression  | ❌                   | ✅                  |
+| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                   | ❌                  |
+| Gzip              | Gzip 6/9              | Universal            | Manual               | Manual               |
+| zStd              | zStandard level 12/22 | Best Speed/Ratio     | Manual               | Manual               |
+| Libbsc            | bsc.exe level 1/2     | Higher compression   | Manual               | Manual               |
 
-  - **Auto (On-Premise)** : Use zStd for < 1Mb files, then libbsc for larger file, if installed. Max. file chunk is 75 MB to limit ram usage. Optimal binary encoding = **disabled**, System fields = **included**
-
-  - **Auto (SaaS)** : Use Gzip, Max. file chunk is 200 MB. Optimal binary encoding = **enabled**, System fields =**skiped**
-
-  - **Gzip** : Compress with gzip at "optimal" level, other options are manual
-
-  - **zStd** : Compress with zStandard at medium level (12/22), other options are manual
-
-  - **Libbsc** : Compress with bsc.exe at medium level (1/2), other options are manual
 
 
 ### Archive structure 
+
 ```
 Archive.zip/
 |   datameta.json      // definition of tables schemas, files ansd general info
@@ -136,36 +147,14 @@ The stream is read with exact same logic than it was created, based on the expor
 
 To enforce the data integrity, an **MD5 hash is verified after each file is decompressed**. 
 
-
-## Row-oriented
-
-The system automatically use this format for tables with < 100 records.
-
-**Row-oriented is better suited for small table**, because it does not have the column managment overhead.
-
-Each table record is written as a "row" composed of all the field binary values.
-
-The file does not contain any metadata, separators or control character.
+ - Row-oriented — used for small tables (< 100 rows); simple and low-overhead
+ - Column-oriented — used for large tables (≥ 100 rows); better compression ratio and faster imports; empty columns are automatically skipped (detected based on BC default values)
+   - Compressed TAR archive, containing each column as separate binary streams + json with columns definitions
+ - MD5 hash verification after each decompressed file to ensure integrity
 
 ![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/row-vs-column-format.webp?raw=true)
-
-
-## Column oriented (parquet-like format)
-
-The system automatically use this format for tables with >= 100 records. I recommand to alway keep this option enabled.
-
-**Column-oriented is better suited for large table**, increasing import speed and reducing file size.
-
-Each columns are stored as separate binary stream inside a TAR archive. A json file is stored along to retrieve columns definitions.
-
-While exporting column-orentied data, the program keep track of empty column that only contain BC default values.
-
-When export end, empty columns are ignored, they're not wrote in the TAR file.
-
-The final TAR file is compressed as one single file, achieving better ratio than row-oriented file due to data-type groupment.
-
-
-## Table chunking
+ 
+### Table chunking
 
 A size limit is fixed per file in order to limit RAM usage, and distribute database comits.
 When a table export reach the size limit, the file is closedm, compressed and a new stream begin for ongoing record.
@@ -175,15 +164,15 @@ Note that using Libbsc compression consume ~5x the file size in RAM (multiplied 
 When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
 
 
-## Optimal binary encoding
+### Optimal binary encoding
 
-Use ZigZag to reduce the size of binary numerical values such as Integer, Decimal, Date ect.
+Uses ZigZag encoding to shrink numerical types (Integer, Decimal, Date, etc.). Reduces file size and RAM usage during processing.
 
-This option offer a small size reduction on final gziped file and also reduce the ram usage when procssing files.
+This option offer a size reduction on final gziped file and also reduce the ram usage when procssing files.
 
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-**This option is not recommanded when using Libbsc compression**, it lead to increased final file size with uncecessary processing overhead.
+*⚠️ Not recommended when using libbsc — the block-sorting compressor is more effective on unencoded binary data, and may lead to increase of file size.*
 
 
 
