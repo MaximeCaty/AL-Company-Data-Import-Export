@@ -7,11 +7,11 @@ Use this app to copy a company across different instances, without replacing the
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
 | Partial table selection  | ❌          | ✅                               |
-| Schema mismatch handling | ❌          | ✅ Auto-match + manual control   |
+| Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
 | UI Visibility            | ❌          | ✅ Assisted setup + Per-thread progression |
-| Error recovery           | ❌          | ✅ Continues on chunk failure    |
+| Error recovery           | ❌ full rollback | ✅ Log+Continues to next chunk    |
 | Multithreaded processing | ❌          | ✅                               |
-| Tight file size          | ❌          | ✅ Column-oriented + zStd/libbsc |
+| Tight file size          | ❌ basic compression | ✅ Column-oriented + zStd/libbsc |
 
 
 ### OnPrem vs SaaS Limitations
@@ -101,7 +101,7 @@ This chapter explain how the data is structured inside archive files.
 | Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                   | ❌                  |
 | Gzip              | Gzip 6/9              | Universal            | Manual               | Manual               |
 | zStd              | zStandard level 12/22 | Best Speed/Ratio     | Manual               | Manual               |
-| Libbsc            | bsc.exe level 1/2     | Higher compression   | Manual               | Manual               |
+| Libbsc            | bsc.exe level 1/2     | Heavy compression    | Manual               | Manual               |
 
 
 
@@ -153,11 +153,11 @@ When importing, comit happen at the end of each chunk. It may happen that a larg
 
 Uses ZigZag encoding to shrink numerical types (Integer, Decimal, Date, etc.). Reduces file size and RAM usage during processing.
 
-This option offer a size reduction on final gziped file and also reduce the ram usage when procssing files.
+This option offer help reduce final gziped file, and also reduce ram consumption during import/export.
 
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-*⚠️ Not recommended when using libbsc — the block-sorting compressor is more effective on unencoded binary data, and may lead to increase of file size.*
+*⚠️ Not recommended when using libbsc — the block-sorting compressor is more effective on unencoded binary data, and may lead to increased file size.*
 
 
 
