@@ -95,13 +95,13 @@ This chapter explain how the data is structured inside archive files.
 
 ### Options offered in the assisted export
 
-| Mode              | Algorithm             | Best for             | Optimal binary encoding | Include System fields |
-|-------------------|-----------------------|----------------------|----------------------|----------------------|
-| Auto (On-Premise) | zStd (<1Mb) → libbsc  | Speed + Compression  | ❌                   | ✅                  |
-| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                   | ❌                  |
-| Gzip              | Gzip 6/9              | Universal            | Manual               | Manual               |
-| zStd              | zStandard level 12/22 | Best Speed/Ratio     | Manual               | Manual               |
-| Libbsc            | bsc.exe level 1/2     | Heavy compression    | Manual               | Manual               |
+| Mode              | Algorithm             | Best for             |  Column Oriented storage | Optimal binary encoding | Include System fields |
+|-------------------|-----------------------|----------------------|----------------------|----------------------|----------------------|
+| Auto (On-Premise) | zStd (<1Mb) → libbsc  | Speed + Compression  | ✅                  | ❌                   | ✅                  |
+| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                  | ✅                   | ❌                  |
+| Gzip              | Gzip 6/9              | Universal            | Manual               | Manual               | Manual               |
+| zStd              | zStandard level 12/22 | Best Speed/Ratio     | Manual               | Manual               | Manual               |
+| Libbsc            | bsc.exe level 1/2     | Heavy compression    | Manual               | Manual               | Manual               |
 
 
 
