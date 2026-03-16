@@ -15,9 +15,12 @@ Use this app to copy a company across instances, without replacing the whole dat
 | Compressed binary format | ❌          | ✅ Column-oriented + zStd/libbsc |
 
 
-### Usage SaaS vs On-Premise Limitations
+### OnPRem vs SaaS Limitations
 
-*ℹ️ SaaS support is functional but not yet finalized. See Deployment for how to strip the ONPREM pragma. We use "Table Information" to get real data size insight, this table have scope = OnPrem. Feel free to adapt the code if you like to use it on Cloud.*
+ℹ️ SaaS support is almost functionnal but not finalized. See Deployment for how to strip the ONPREM pragma. We use "Table Information" to get real data size but this table have scope = OnPrem.
+As we have the ability to copy a SaaS instance to a Sandbox in a click, I've not invested to make it Cloud compatible.
+
+Addtionnaly there would be bellow limitations :
 
 |                               | SaaS               | On-Premise                           |
 |-------------------------------|--------------------|--------------------------------------|
