@@ -10,23 +10,16 @@ This does not exists anymore in Business Central.
 Only an old powershell command remain and is very unconvenient to use 
 (Slow, no visible progression, fail at the first schema difference)
 
+So here is an AL version of Import-Export data file, with offer superior ability than the legacy version.
+
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
 | Partial table selection  | ❌          | ✅                               |
 | Schema mismatch handling | ❌          | ✅ Auto-match + manual control   |
-| Progress visibility      | ❌          | ✅ Per-thread live progress      |
+| UI Visibility            | ❌          | ✅ Assisted setup + Per-thread progression |
 | Error recovery           | ❌          | ✅ Continues on chunk failure    |
 | Multithreaded processing | ❌          | ✅                               |
 | Compressed binary format | ❌          | ✅ Column-oriented + zStd/libbsc |
-
-So here is an AL version of Import-Export data file, with offer superior ability than the legacy version.
-
-2. **Partial company data** selection possible for export/import (you may exclude tables like logs to limit data size)
-3. **Support schema difference** at import : auto suggest table and field matching with manual control
-4. **Assisted page** for import/export with GUI process progression
-5. **Error handling** : the process continue on next data chunk when an error occur
-6. **Optimised performance** with multithreading
-8. **Restricted file size** using combination of binary encoding, column oriented storage and advanced compression
 
 
 ### Usage SaaS vs On-Premise Limitations
