@@ -72,8 +72,9 @@ Then search for the page "Assisted company data import"
 2. Restart Business Central instance. 
 3. Then publish the app with the "ONPREM" pragma
 
-- **❗Recommanded for better compression :** to use block sorting compression, copy bsc.exe into Busienss Central Addin folder. The app will automatically use it to further reduce file size.
-This executable can be found here [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
+- **❗Recommanded :** for better compression use block sorting compression. 
+Copy bsc.exe into Busienss Central Addin folder. The app will automatically use it to further reduce file size.
+The executable can be found in Ilya repo : [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
 
 
 - **SaaS** :
