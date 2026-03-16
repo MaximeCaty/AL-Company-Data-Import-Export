@@ -33,11 +33,11 @@ So here is an AL version of Import-Export data file, with offer superior ability
 Search for the page "Assisted company data export" :
 
 Steps :
-1. Select the company to export. Estimation of file size and export are calculated for On-Prem configuration.
-2. Choose data selection rule : classified data, system fields, global data, logs, archive.
-4. Archive format, leave "Auto" for the optimal performance/file size ratio.
-5. Review the list of tables that will be exported. You can remove table from this list.
-6. Review summary, lower the number of threads if you want to reduce server workload, press "Start Export"
+1. Select the company to export
+2. Choose data scope : classified data, system fields, include global data / logs / archive
+4. Archive data format ("Auto" by default)
+5. Review the list of tables included in export. You may remove table manualy from the list.
+6. Review summary, lower number of threads to avoid user freeze while exporting.
 
 ![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
 
@@ -48,25 +48,29 @@ Create a new blank company first.
 
 Then search for the page "Assisted company data import"
 
-1. Upload an archive file. The system read metadata and prepare tables files to import.
-2. Select the destination company to import and review Archive file informations.
-3. Review the list of table to import and matching status. For each table you can review field matching individualy and change the default suggestion.
-4. Enable truncate table before importing for a clean import.
-5. Review summyarz, lower the number of threads if you want to reduce server workload. press "Start Import"
+1. Upload an archive, the system read metadata and prepare import
+2. Select destination company
+3. Review the list of table to import and matching when needed
+4. Review summary, lower number of threads to avoid user freeze while importing
 
 ![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Match.png?raw=true)
 
-*You can change table mapping manually at this step. Drill down on the field column to change a table field mapping details.*
+*You can change table mapping manually at this step with the column "Matched Table ID". Drill down on the "No. fields" column to change a table field mapping details when needed.*
+ - *"⚠️ Partial" mean that some fields are not mapped to the destination table.*
+ - *"⛔ Missing" mean that the table is not mapped to a destination table.*
 
 ![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Progress-Page.png?raw=true)
 
-*Import progress can be either show on a progrress dialog or with this separated page, showing each thread progression. An action allow you to stop all threads.*
+*Import progress can be either show on a foreground dialog or with this separated page, showing each thread progression. An action allow you to stop all threads.*
 
 
 
 ## Deployment & Installation
 
 - **SaaS** :
+
+*Cloud support is yet to be finalized*
+
 in ```app.json``` remove "ONPREM" pragma :
   ```
   "preprocessorSymbols": [
@@ -108,14 +112,15 @@ This chapter explain how the data is structured inside archive files.
 ```
 Archive.zip/
 |   datameta.json      // definition of tables schemas, files ansd general info
-|   Table1_File1.gzip  // Table chunk, row-oriented binary 
-|   Table1_File2.gzip  // Table chunk, row-oriented binary
-|   Table2_File1.gzip  // Table chunk, row-oriented binary
+|   Table1_File1.gzip  // Table chunk, row-oriented
+|   Table1_File2.gzip  // Table chunk, row-oriented
+|   Table2_File1.gzip  // Table chunk, row-oriented
 ...
-|   Table18_File1.colstore.bsc/  // Table chunk, column-oriented, compressed TAR file
-|   |   +-- columns.json         // field-column file info.
-|   |   +-- Column_1.bin         // table column binary data
-|   |   +-- Column_2.bin
+|   Table18_File1.colstore.bsc/  // Table chunk, column-oriented
+|   |   +-- columns.json         // columns infomrations
+|   |   +-- Column_1.bin         // column 1 binary data stream
+|   |   +-- Column_2.bin         // column 2 binary data stream
+|   |   +-- Column_3.bin         // column 3 binary data stream
 ...
 ```
 
@@ -141,6 +146,8 @@ The system automatically use this format for tables with < 100 records.
 Each table record is written as a "row" composed of all the field binary values.
 
 The file does not contain any metadata, separators or control character.
+
+![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/row-vs-column-format.webp?raw=true)
 
 
 ## Column oriented (parquet-like format)
