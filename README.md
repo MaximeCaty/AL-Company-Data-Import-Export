@@ -149,11 +149,11 @@ When importing, comit happen at the end of each chunk. It may happen that a larg
 
 Uses ZigZag encoding to shrink numerical types (Integer, Decimal, Date, etc.). Reduces file size and RAM usage during processing.
 
-This option offer help reduce final gziped file, and also reduce ram consumption during import/export.
+This option can help when using gzip on file size.
 
 See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
 
-*⚠️ Not recommended when using libbsc — the block-sorting compressor is more effective on unencoded binary data, and may lead to increased file size.*
+*⚠️ Not recommended when using libbsc — block-sorting compressor is more effective on unencoded binary data, and may lead to increased file size.*
 
 
 
