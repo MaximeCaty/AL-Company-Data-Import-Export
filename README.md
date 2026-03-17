@@ -22,10 +22,9 @@ Addtionnaly there would be bellow limitations :
 
 |                               | SaaS               | On-Premise                           |
 |-------------------------------|--------------------|--------------------------------------|
-| Compression                   | Gzip               | zStd / libbsc (~40% smaller)         |
-| Insert performance            | Native AL (slower) | SQL bulk insert via DLL (~3× faster) |
-| System fields (Created At/By) | ❌ Cannot import    | ✅ Imported via direct SQL            |
-| Table size insight            | ❌ Limited          | ✅ Full (Table Information)           |
+| Archive size                  | Gzip               | zStd / libbsc (~35% smaller)         |
+| Speed                         | Native AL, ~3× slower | SQL bulk insert via DLL           |
+| System fields (Created At/By) | Original value lost | Original value imported via direct SQL |
 
 ## Export 
 
