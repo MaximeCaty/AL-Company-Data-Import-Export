@@ -24,7 +24,7 @@ Addtionnaly there would be bellow limitations :
 |-------------------------------|--------------------|--------------------------------------|
 | Archive size                  | Gzip               | zStd / libbsc (~35% smaller)         |
 | Speed                         | Native AL, ~3× slower | SQL bulk insert via DLL           |
-| System fields (Created At/By) | Original value lost | Original value imported via direct SQL |
+| System fields (Created/Modified/At/By) | Original value lost | Original value imported via direct SQL |
 
 ## Export 
 
