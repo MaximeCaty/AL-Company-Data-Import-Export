@@ -67,13 +67,12 @@ Then search for the page "Assisted company data import"
 
 
 -  **On-Premise** : 
-1. Copy DLLs from ```.netpackages``` in your Business Central Addin folder. 
-2. Restart Business Central instance. 
-3. Then publish the app with the "ONPREM" pragma
+1. Copy DLLs from ```.netpackages``` in Business Central ```Service/Addin``` folder
+2. Restart Business Central instance service 
+3. Publish the app with the "ONPREM" preprocessor symbol
 
-- **❗Recommanded :** for better compression use block sorting compression. 
-Copy bsc.exe into Busienss Central Addin folder. The app will automatically use it to further reduce file size.
-The executable can be found in Ilya repo : [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
+- **❗Recommanded :** for smaller archive, use block sorting compressor : Put bsc.exe in Business Central Addin folder, the app use it to further reduce file size when available.
+The executable can be found in Ilya repository : [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
 
 
 - **SaaS** :
