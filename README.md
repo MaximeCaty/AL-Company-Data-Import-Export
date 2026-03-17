@@ -1,8 +1,8 @@
 
 # AL Company Data-Import-Export
 
-Offer Business Central replacement for legacy NAV "Import / Export Data File" that does not exists anymore.
-Use this app to copy a company across different instances, without replacing the whole database.
+Offer Business Central replacement for legacy NAV "Import / Export Data File".
+Use this app to copy a company across different instances, without replacing the whole database, or migrate schema differences.
 
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
@@ -18,11 +18,11 @@ Use this app to copy a company across different instances, without replacing the
 
 ℹ️ SaaS support is almost functionnal but not finalized. See Deployment. We use "Table Information" to get real data size but this table have scope = OnPrem.
 
-Addtionnaly there would be bellow limitations :
+Addtionnaly there's bellow limitations :
 
 |                               | SaaS               | On-Premise                           |
 |-------------------------------|--------------------|--------------------------------------|
-| Archive size                  | Gzip               | zStd / libbsc (~35% smaller)         |
+| Archive size                  | Gzip               | zStd/libbsc ~35% smaller             |
 | Speed                         | Native AL, ~3× slower | SQL bulk insert via DLL           |
 | System fields (Created/Modified/At/By) | Original value lost | Original value imported via direct SQL |
 
