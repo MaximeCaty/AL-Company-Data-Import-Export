@@ -66,13 +66,15 @@ Then search for the page "Assisted company data import"
 ## Deployment & Installation
 
 
--  **On-Premise** : 
-1. Copy DLLs from ```.netpackages``` in Business Central ```Service/Addin``` folder
+-  **On-Premise** :
+1. Enable write inside TryFunction in Business Central Service : -SetNavServer-Configuration Instance -KeyName DisableWriteInsideTryFunctions -KeyValue false
+1. Copy the Bulk Insert DLL from ```.netpackages``` in Business Central ```Service/Addin``` folder
 2. Restart Business Central instance service 
-3. Publish the app with the "ONPREM" preprocessor symbol
+3. Publish the app
 
 - **❗Recommanded :** for smaller archive, use block sorting compressor : Put bsc.exe in Business Central Addin folder, the app use it to further reduce file size when available.
 The executable can be found in Ilya repository : [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
+For BC 27+ : the instance must have the configuration : EnforceUserPathForAlFileOperations = false
 
 
 - **SaaS** :
