@@ -211,24 +211,21 @@ namespace BCBulkInsertHelper
 
             if (mainColumns.Count > 0)
             {
-                using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity))
+                using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.TableLock))
                 {
                     bulk.DestinationTableName = mainTableName;
                     bulk.BatchSize = batchSize;
                     bulk.BulkCopyTimeout = 0;
+                    bulk.EnableStreaming = true;
 
                     foreach (string col in mainColumns)
                         bulk.ColumnMappings.Add(col, col);
-
-                    DataTable mainData = (mainColumns.Count == _dataTable.Columns.Count)
-                        ? _dataTable
-                        : CreateSubset(_dataTable, mainColumns);
 
                     bool Sucess = true;
                     string errorDetails = ""; 
                     try
                     {
-                        bulk.WriteToServer(mainData);
+                        bulk.WriteToServer(_dataTable);
                     }
                     catch (Exception ex)
                     {
@@ -255,11 +252,12 @@ namespace BCBulkInsertHelper
             }
             if (hasExtensionFields && _pkColumns.Count > 0)
             {
-                 using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity))
+                 using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.TableLock))
                     {
                         bulk.DestinationTableName = extTableName;
                         bulk.BatchSize = batchSize;
                         bulk.BulkCopyTimeout = 0;
+                        bulk.EnableStreaming = true;
 
                         // Add PK
                         foreach (string pk in _pkColumns)
@@ -393,6 +391,7 @@ namespace BCBulkInsertHelper
                 command.Parameters.AddWithValue("@table", tableName);
 
                 var result = command.ExecuteScalar();
+                connection.Close();
                 return result != null;
             }
             catch (SqlException ex)
