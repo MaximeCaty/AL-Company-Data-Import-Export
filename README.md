@@ -67,7 +67,7 @@ Then search for the page "Assisted company data import"
 
 
 -  **On-Premise** :
-1. Enable write inside TryFunction in Business Central Service : -SetNavServer-Configuration Instance -KeyName DisableWriteInsideTryFunctions -KeyValue false
+1. Enable write inside TryFunction on the Business Central instance : ```SetNavServer-Configuration Instance -KeyName DisableWriteInsideTryFunctions -KeyValue false```
 1. Copy the Bulk Insert DLL from ```.netpackages``` in Business Central ```Service/Addin``` folder
 2. Restart Business Central instance service 
 3. Publish the app
