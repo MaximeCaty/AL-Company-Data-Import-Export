@@ -6,24 +6,35 @@ Use this app to copy a company across different instances, without replacing the
 
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
-| Partial table selection  | ❌ per scope          | ✅ per table                               |
+| Multiple Company Imp/Exp | ✅         | ❌ One company at a time       |
+| Data selection  | ❌ all + include globale Y/N | ✅ per table        |
 | Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
-| UI Visibility            | ❌ freeze         | ✅ Assisted setup + Per-thread progression |
+| UI Visibility            | ❌ freeze         | ✅ Assisted setup + threads progression |
 | Error recovery           | ❌ full rollback | ✅ Log and continues to next chunk    |
 | Multithreaded processing | ❌          | ✅                               |
-| Tight file size          | ❌ basic compression | ✅ Column-oriented + zStd/libbsc |
+| Tight file size          | ❌ basic compression | ✅ Column-oriented storage + zStd/libbsc |
+
+### Performance Sample
+
+|                               | Cronus W1 23.18    | Company with 1Y intensive activities |
+|-------------------------------|--------------------|--------------------------------------|
+| Database MDF disk size        | 1 GB               | 45 GB           |
+| Tables with data              | 548                | 365             |
+| Number of records             | 43'783             | 8'662'740       |
+| Export Duration               | **5.5 s**          | **12 minutes**  |
+| Final Archive file size       | **3.5 MB**         | **357 MB**      |
+| Import Duration (OnPrem-DLL)  | **8.3 s**          | **17 minutes**  |
+| Import Duration (Cloud)       | 10.5 s             | 53 minutes      |
 
 
 ### OnPrem vs SaaS Limitations
 
-ℹ️ SaaS support is almost functionnal but not finalized. See Deployment. We use "Table Information" to get real data size but this table have scope = OnPrem.
-
-Addtionnaly there's bellow limitations :
+Saas usage as some tradeoff regarding OnPrem :
 
 |                               | SaaS               | On-Premise                           |
 |-------------------------------|--------------------|--------------------------------------|
-| Archive size                  | Gzip               | zStd/libbsc ~35% smaller             |
-| Speed                         | Native AL, ~3× slower | SQL bulk insert via DLL           |
+| Exported File size            |  ~35% larger : Gzip | zStd + libbsc compressors           |
+| Speed                         | Native AL          | SQL bulk via DLL, ~2.5x faster on large table  |
 | System fields (Created/Modified/At/By) | Original value lost | Original value imported via direct SQL |
 
 ## Export 
@@ -65,29 +76,35 @@ Then search for the page "Assisted company data import"
 
 ## Deployment & Installation
 
+Download .APP from the repository Release folder. Additional DLL for OnPremise can also be found in the zip.
 
--  **On-Premise** :
+
+### On-Premise 
 1. Enable write inside TryFunction on the Business Central instance : ```SetNavServer-Configuration Instance -KeyName DisableWriteInsideTryFunctions -KeyValue false```
-1. Copy the Bulk Insert DLL from ```.netpackages``` in Business Central ```Service/Addin``` folder
-2. Restart Business Central instance service 
-3. Publish the app
+2. BC 27+ : to enable SQL DLL import, and advanced compressor : ```SetNavServer-Configuration Instance -KeyNam EnforceUserPathForAlFileOperations -KeyValue false```
+4. Copy DLLs from ```.netpackages``` in Business Central ```Service/Addin``` folder
+5. Restart Business Central instance service 
+6. Publish the app
 
-- **❗Recommanded :** for smaller archive, use block sorting compressor : Put bsc.exe in Business Central Addin folder, the app use it to further reduce file size when available.
+- **❗Recommanded :** for smaller export file size, use block sorting compressor : Put bsc.exe in Business Central Addin folder, the app use it to further reduce file size when available.
 The executable can be found in Ilya repository : [GitHub Libbsc release](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
-For BC 27+ : the instance must have the configuration : EnforceUserPathForAlFileOperations = false
 
 
-- **SaaS** :
+### Cloud 
 
-*Cloud support is yet to be finalized*
+Upload the .APP from the release folder - SaaS version
 
-in ```app.json``` remove "ONPREM" pragma :
+Or compile from the source code :
+
+1. Simply remove the preprocessorSymbols in ```app.json``` :
   ```
   "preprocessorSymbols": [
-    "ONPREM"
+    "ONPREM"  <- Remove this
   ]
   ```
-  "Table Information" OnPrem scope need to be solved to publish it on SaaS
+2. Change the target to cloud : ```"target": "Cloud",```
+
+Thats it! The extension compile for SaaS.
   
 
 ## Archive File Format & Encoding
@@ -96,10 +113,10 @@ This chapter explain how the data is structured inside archive files.
 
 ### Options offered in the assisted export
 
-| Mode              | Algorithm             | Best for             |  Column Oriented storage | Optimal binary encoding | Include System fields |
+| Mode              | Algorithm             | Best for             |  Column Oriented storage | Max Table-Chunk Size | Include System fields |
 |-------------------|-----------------------|----------------------|----------------------|----------------------|----------------------|
-| Auto (On-Premise) | zStd (<1Mb) → libbsc  | Speed + Compression  | ✅                  | ❌                   | ✅                  |
-| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                  | ✅                   | ❌                  |
+| Auto (On-Premise) | zStd (<1Mb) → libbsc  | Speed + Compression  | ✅                  | 75 MB                | ✅                  |
+| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility  | ✅                  | 200 MB               | ❌                  |
 | Gzip              | Gzip 6/9              | Universal            | Manual               | Manual               | Manual               |
 | zStd              | zStandard level 12/22 | Best Speed/Ratio     | Manual               | Manual               | Manual               |
 | Libbsc            | bsc.exe level 1/2     | Heavy compression    | Manual               | Manual               | Manual               |
@@ -131,7 +148,7 @@ All business central data are written in binary format, allowing faster parsing 
 **Binaries streams only contain table data**, without any headers or separators. 
 
  - Row-oriented — used for small tables (< 100 rows); simple and low-overhead, sequencial per record then per field loop.
- - Column-oriented — used for large tables (≥ 100 rows); better compression ratio and faster imports; empty columns automatically skipped (detected based on BC default values)
+ - Column-oriented — used for larger tables (≥ 100 rows); better compression ratio, faster imports, reduce size skipping empty columns (detected based on BC default values comparisons)
    - Compressed TAR archive, containing each column as separate stream + json with columns definitions
  - MD5 hash verification after each file decompressed to ensure integrity
 
@@ -145,19 +162,6 @@ When a stream reach the size limit, the file is closed, compressed and a new str
 Note that using Libbsc compression require much free RAM : ~5x the file size, multiplied by threads.
 
 When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
-
-
-### Optimal binary encoding
-
-Uses ZigZag encoding to shrink numerical types (Integer, Decimal, Date, etc.). Reduces file size and RAM usage during processing.
-
-This option can help when using gzip on file size.
-
-See original repository : [AL-Optimal-Binary-Encoding details](https://github.com/MaximeCaty/AL-Optimal-Binary-Encoding)
-
-*⚠️ Not recommended when using libbsc — block-sorting compressor is more effective on unencoded binary data, and may lead to increased file size.*
-
-
 
 
 
