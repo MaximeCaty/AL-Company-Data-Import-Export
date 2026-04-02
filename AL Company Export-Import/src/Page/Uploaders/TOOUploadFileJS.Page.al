@@ -2,7 +2,6 @@ page 51014 "TOO Upload File JS"
 {
     Caption = 'Upload large file using JS addin';
     PageType = Card;
-    ApplicationArea = All;
 
     layout
     {
@@ -46,11 +45,11 @@ page 51014 "TOO Upload File JS"
                 {
                     ApplicationArea = All;
 
-                    trigger StartUpload(FileName: Text; TotalSize: Integer)
+                    trigger StartUpload(UploadedFileName: Text; TotalSize: Integer)
                     begin
                         clear(TempBlob);
                         TempBlob.CreateOutStream(OutStr, TextEncoding::Windows); // single byte text encoding
-                        this.FileName := FileName;
+                        FileName := UploadedFileName;
                         FileSize := Format(TotalSize div (1024 * 1024)) + ' MB';
                         TotalSizeGlobal := TotalSize;
                         ReceivedSizeGlobal := 0;
@@ -99,11 +98,11 @@ page 51014 "TOO Upload File JS"
         exit(UploadCompleted);
     end;
 
-    procedure GetInStream(var FileName: Text; var InStr: InStream)
+    procedure GetInStream(var UploadedFileName: Text; var InStr: InStream)
     begin
         if not UploadCompleted then
             Error('No file were uploaded or completed.');
-        FileName := this.FileName;
+        FileName := FileName;
         //TempFile.Read(InStr);
         TempBlob.CreateInStream(InStr)
     end;

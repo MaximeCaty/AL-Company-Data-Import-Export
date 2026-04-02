@@ -1,7 +1,8 @@
 codeunit 51007 "TOO Pipou Import Events"
 {
-    // This codeunit subscribe manualy to events when importing company data via AL
-    // it aim to ignore as much insert events as possible to let the raw data be imported without logic process
+    // This codeunit is subscribed manualy during data-import via AL
+    // it aim to ignore insert events to let the raw data be imported without logic process
+    // add your own subscriber here as wanted
 
     EventSubscriberInstance = Manual;
 
@@ -14,12 +15,6 @@ codeunit 51007 "TOO Pipou Import Events"
 
     [EventSubscriber(ObjectType::Table, Database::"Contact Business Relation", OnInsertOnBeforeFindByRelation, '', false, false)]
     local procedure ContactOnInsertOnBeforeFindByRelation(var IsHandled: Boolean)
-    begin
-        IsHandled := true;
-    end;
-
-    [EventSubscriber(ObjectType::Table, Database::Contact, OnBeforeCreateLink, '', false, false)]
-    local procedure ContactOnBeforeCreateLink(var IsHandled: Boolean)
     begin
         IsHandled := true;
     end;

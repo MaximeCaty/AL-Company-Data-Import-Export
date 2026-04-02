@@ -33,7 +33,7 @@ table 51004 "TOO Pipou Archive Files"
         }
         field(60; "Chunk No."; Integer)
         {
-            ToolTip = 'Index of the data file per table, in case the table can not be exported in a single file within the chunk size limit.';
+
         }
         field(70; "File Name"; Text[50])
         {
@@ -49,35 +49,34 @@ table 51004 "TOO Pipou Archive Files"
         }
         field(100; "Number Of Recs"; Integer)
         {
-            ToolTip = 'Number of records stored in this file';
+
         }
         field(110; "Compression Mode"; Enum "TOO Compression Algo.")
         {
-            ToolTip = 'Compression method used for this file';
         }
         field(120; "Compressed Length"; Integer)
         {
-            ToolTip = 'Compressed file size';
+
         }
         field(130; "Comp. Ratio"; Decimal)
         {
-            ToolTip = 'Percentage of file size reduction regarding original decompressed data size';
+
         }
         field(140; "Uncompressed Length"; Integer)
         {
-            ToolTip = 'Raw decompressed file size';
+
         }
         field(150; "Uncompressed MD5 Hash"; Text[150])
         {
-            ToolTip = 'MD5 hash signature of decompressed data for integrity control';
+
         }
         field(160; "Column Storage"; Boolean)
         {
-            ToolTip = 'Specify if the data use columnar encoding method instead of row.';
+
         }
         field(200; Data; Blob)
         {
-            ToolTip = 'File data content';
+
         }
         field(500; Exported; Boolean)
         {
@@ -95,21 +94,18 @@ table 51004 "TOO Pipou Archive Files"
         }
         field(1000; "Original Table Name"; Text[150])
         {
-            ToolTip = 'Original table name data were exported from';
             FieldClass = FlowField;
             CalcFormula = lookup("TOO Pipou Archive Tables"."Table Name" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
             Editable = false;
         }
         field(1010; "Original Table Caption"; Text[150])
         {
-            ToolTip = 'Original table caption data were exported from';
             FieldClass = FlowField;
             CalcFormula = lookup("TOO Pipou Archive Tables"."Table Caption" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
             Editable = false;
         }
         field(1020; "No. of Fields"; Integer)
         {
-            ToolTip = 'Number of fields';
             FieldClass = FlowField;
             CalcFormula = count("TOO Pipou Archive Fields" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
             Editable = false;

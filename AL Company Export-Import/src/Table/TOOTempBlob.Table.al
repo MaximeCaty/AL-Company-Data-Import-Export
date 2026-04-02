@@ -1,11 +1,10 @@
-// This table is created to convers handle blob fieldref faster than TempBlob.FromFieldRef(FieldRef)
-// TempBlob.FromFieldRef is doing 2 SQL fetch on the blob (if not hasvalue then calcfield + create instream)
-// when the Blob meta is already fetched with setloadfield we dont need to redo a calcfield 
+/*
+    This temp table allow to export recref blob 
+    It is much faster than converting fieldref to codeunit temp blob
+*/
 table 51014 "TOO Temp Blob"
 {
     Access = Internal;
-    InherentEntitlements = X;
-    InherentPermissions = X;
     TableType = Temporary;
 
     fields

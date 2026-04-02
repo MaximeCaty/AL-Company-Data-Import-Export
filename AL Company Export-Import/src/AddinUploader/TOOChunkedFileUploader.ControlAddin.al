@@ -4,11 +4,11 @@ controladdin "TOO ChunkedFileUploader"
     MinimumWidth = 380;
     RequestedHeight = 180;
     RequestedWidth = 380;
-    StartupScript = 'uploader.js';
-    StyleSheets = 'uploader.css';
+    StartupScript = 'src/AddinUploader/uploader.js';
+    StyleSheets = 'src/AddinUploader/uploader.css';
 
     // Événements déclenchés par JS
-    event StartUpload(FileName: Text; TotalSize: Integer);
+    event StartUpload(UploadedFileName: Text; TotalSize: Integer);
     event UploadChunk(BinaryTextChunk: Text; ChunkNumber: Integer);
     event FinishUpload();
     event UploadError(ErrorMessage: Text);

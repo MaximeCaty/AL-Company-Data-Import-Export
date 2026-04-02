@@ -34,7 +34,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
             if ArchiveFile."Uncompressed MD5 Hash" <> '' then begin
                 CalulatedHash := Hash.GenerateHash(DecompressedInStr, HashAlgorithmType::MD5);
                 if ArchiveFile."Uncompressed MD5 Hash" <> CalulatedHash then
-                    Error('File "%1" decompression integrity check failed.\Original data signature hash : %1\Decompressed data signature hash : %2', ArchiveFile."File Name", ArchiveFile."Uncompressed MD5 Hash", CalulatedHash);
+                    Error('File "%1" decompression integrity check failed.\Original data signature hash : %2\Decompressed data signature hash : %3', ArchiveFile."File Name", ArchiveFile."Uncompressed MD5 Hash", CalulatedHash);
                 DecompressedInStr.ResetPosition();
             end;
             TarMgt.OpenTarArchive(DecompressedInStr);
@@ -84,7 +84,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
     var
         i: Integer;
     begin
-        for i := 1 to 1000 do
+        for i := 1 to ColCount do
             if ColumnOriginalFieldID[i] = OriginalFieldID then begin
                 InStr := ColumnInStrArr[i];
                 exit;
@@ -158,29 +158,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
     begin
         TarMgt.CreateTarArchive();
         MetaWritten := false;
-    end;
-
-    procedure AddCompressedColumn(Archive: Record "TOO Pipou Archive"; var ArchiveFile: Record "TOO Pipou Archive Files"; var Tablefields: Record "TOO Pipou Archive Fields"; var ColumnBlob: codeunit "Temp Blob")
-    var
-        CompressedColumn: Codeunit "Temp Blob";
-        CompressedColumnOutStr: OutStream;
-        InStr: InStream;
-    begin
-        // Check blob content
-        if ColumnBlob.Length() = 0 then
-            Error('Error while exporting table %1 : binary stream for field %2 %3 is empty.', ArchiveFile."Table Name", Tablefields."Table ID", Tablefields."Field Name");
-
-        ColCount += 1;
-        CompressedColumn.CreateOutStream(CompressedColumnOutStr);
-        ColumnFileName[ColCount] := Tablefields."Field Name".Replace(' ', '_');
-        ColumnOriginalFieldID[ColCount] := Tablefields."Field ID";
-
-        // Append compressed column data to the TAR 
-        CompressedColumn.CreateInStream(InStr);
-        TarMgt.WriteTarEntry(InStr, ColumnFileName[ColCount]);
-
-        // Free ram column we append to the file
-        Clear(ColumnBlob);
+        ColCount := 0;
     end;
 
     procedure AddColumn(Archive: Record "TOO Pipou Archive"; var ArchiveFile: Record "TOO Pipou Archive Files"; var Tablefields: Record "TOO Pipou Archive Fields"; var ColumnBlob: codeunit "Temp Blob")

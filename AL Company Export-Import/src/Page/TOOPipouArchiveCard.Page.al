@@ -1,7 +1,6 @@
 page 51021 "TOO Pipou Archive Card"
 {
     PageType = Card;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Archive";
     ModifyAllowed = false;
     InsertAllowed = false;
@@ -33,10 +32,6 @@ page 51021 "TOO Pipou Archive Card"
                     {
                         ApplicationArea = all;
                     }
-                    field("Total Size (KB)"; Rec."Total Original Data Size (KB)")
-                    {
-                        ApplicationArea = all;
-                    }
                     field("Files Compressed Size (KB)"; Rec."Files Compressed Size (KB)")
                     {
                         ApplicationArea = all;
@@ -64,7 +59,20 @@ page 51021 "TOO Pipou Archive Card"
                     {
                         ApplicationArea = all;
                     }
-                    field("Enable Optimal Encode"; Rec."Enable Optimal Encode")
+                }
+                group(Export)
+                {
+                    Caption = 'Exported From';
+
+                    field("Exported From Company"; Rec."Exported From Company")
+                    {
+                        ApplicationArea = all;
+                    }
+                    field("Exported Date Time"; Rec."Exported Date Time")
+                    {
+                        ApplicationArea = all;
+                    }
+                    field("Diff. Export Start DT"; Rec."Diff. Export Start DT")
                     {
                         ApplicationArea = all;
                     }
@@ -77,6 +85,28 @@ page 51021 "TOO Pipou Archive Card"
                 field("Process Status"; Rec."Process Status")
                 {
                     Editable = false;
+                }
+                group(Import)
+                {
+                    Caption = 'Import';
+                    Visible = (Rec."Process Status" = Rec."Process Status"::"✅ Imported") OR (Rec."Process Status" = Rec."Process Status"::"⌛ Importing");
+
+                    field("Import Destination Company"; Rec."Import Destination Company")
+                    {
+                        ApplicationArea = all;
+                    }
+                    field("Imported Files"; Rec."Imported Files")
+                    {
+                        ApplicationArea = all;
+                    }
+                    field("Import Use SQL Bulk"; Rec."Import Use SQL Bulk")
+                    {
+                        ApplicationArea = All;
+                    }
+                    field("Import Warning / Error"; Rec."Import Warning / Error")
+                    {
+                        ApplicationArea = All;
+                    }
                 }
 
                 grid(ProcessActions)
@@ -170,44 +200,6 @@ page 51021 "TOO Pipou Archive Card"
                     UpdatePropagation = Both;
                 }
             }
-            group(Export)
-            {
-                Caption = 'Export';
-
-                field("Exported From Company"; Rec."Exported From Company")
-                {
-                    ApplicationArea = all;
-                }
-                field("Exported Date Time"; Rec."Exported Date Time")
-                {
-                    ApplicationArea = all;
-                }
-                field("Diff. Export Start DT"; Rec."Diff. Export Start DT")
-                {
-                    ApplicationArea = all;
-                }
-            }
-            group(Import)
-            {
-                Caption = 'Import';
-
-                field("Import Destination Company"; Rec."Import Destination Company")
-                {
-                    ApplicationArea = all;
-                }
-                field("Imported Files"; Rec."Imported Files")
-                {
-                    ApplicationArea = all;
-                }
-                field("Import Warning / Error"; Rec."Import Warning / Error")
-                {
-                    ApplicationArea = all;
-                }
-                field("Import Use SQL Bulk"; Rec."Import Use SQL Bulk")
-                {
-                    ApplicationArea = All;
-                }
-            }
             usercontrol(PageAutoRefreshAddin; TOOPageAutoRefreshAddin)
             {
                 Visible = AutoRefresh;
@@ -270,6 +262,7 @@ page 51021 "TOO Pipou Archive Card"
                     PipouImport: Page "TOO Pipou Import Asst. Setup";
                 begin
                     if Rec."Archive Name" <> '' then begin
+                        PipouImport.SetOpenAtStep(3);
                         PipouImport.SetRecord(Rec);
                         PipouImport.SetTableView(Rec);
                         PipouImport.Run();
@@ -329,18 +322,11 @@ page 51021 "TOO Pipou Archive Card"
         ElapsedTime: Duration;
         RemProgress: Decimal;
     begin
-        if TotalSizeToProceedKB = 0 then begin
-            if Rec."Process Status" = Rec."Process Status"::"⌛ Importing" then
-                TotalSizeToProceedKB := Rec."Size To Process (KB)";
-            if Rec."Process Status" = Rec."Process Status"::"⌛ Exporting" then
-                TotalSizeToProceedKB := Rec."Total Original Data Size (KB)";
-        end;
-
         if IsProcessing then begin
             // Progress bar
-            Threads.CalcSums("Proceed Size KB");
-            if TotalSizeToProceedKB > 0 then
-                GlobalProgress := (Threads."Proceed Size KB" / TotalSizeToProceedKB)
+            Threads.CalcSums("Total Rec. Proceed");
+            if Rec."Total Records" > 0 then
+                GlobalProgress := (Threads."Total Rec. Proceed" / Rec."Total Records")
             else
                 GlobalProgress := 0;
             GlobalProgressBar := PipouMgT.ProgressBar(GlobalProgress);
@@ -363,11 +349,13 @@ page 51021 "TOO Pipou Archive Card"
     begin
         RefreshTxt := RefreshLbl;
         StopTxt := StopLbl;
-        AutoRefresh := true;
+        if Rec."Process Status" in [Rec."Process Status"::"⌛ Importing", Rec."Process Status"::"⌛ Exporting"] then
+            AutoRefresh := true
+        else
+            AutoRefresh := false;
     end;
 
     var
-        TotalSizeToProceedKB: Integer;
         IsProcessing: Boolean;
         GlobalProgress: Decimal;
         GlobalProgressBar: Text;

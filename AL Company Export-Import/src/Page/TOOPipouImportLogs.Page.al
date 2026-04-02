@@ -1,7 +1,6 @@
 page 51006 "TOO Pipou Import Logs"
 {
     PageType = List;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Import Log";
     ModifyAllowed = False;
     InsertAllowed = false;

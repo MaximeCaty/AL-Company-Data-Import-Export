@@ -52,13 +52,6 @@ table 51006 "TOO Pipou Archive"
         {
 
         }
-        field(215; "Total Original Data Size (KB)"; Integer)
-        {
-            Editable = false;
-            FieldClass = FlowField;
-            CalcFormula = sum("TOO Pipou Archive Tables"."Original Data Size (KB)" where("Archive ID" = field("Archive ID")));
-        }
-
         field(220; "Compression Ratio (%)"; Decimal)
         {
 
@@ -68,10 +61,6 @@ table 51006 "TOO Pipou Archive"
 
         }
         field(240; "Total Tables"; Integer)
-        {
-
-        }
-        field(310; "Enable Optimal Encode"; Boolean)
         {
 
         }
@@ -91,7 +80,7 @@ table 51006 "TOO Pipou Archive"
         }
         field(500; "No. Files"; Integer)
         {
-            ToolTip = 'Number of independant files included in the archive';
+
         }
         field(510; "Imported Files"; Integer)
         {
@@ -120,14 +109,13 @@ table 51006 "TOO Pipou Archive"
         field(800; DeleteData; Boolean)
         {
             Caption = 'Truncate Table';
-            ToolTip = 'Specify to truncate table data when importing data before new records are imported from archive content.';
         }
         field(830; "Import Use SQL Bulk"; Boolean) { }
         #endregion
 
         field(1000; "Process Status"; Option)
         {
-            OptionMembers = " ","⌛ Exporting","⌛ Importing","⌛ Partially Imported","✅ Imported","✅ Exported";
+            OptionMembers = " ","⌛ Exporting","⌛ Importing","✅ Partially Imported","✅ Imported","✅ Exported";
         }
         field(1001; "Process Started At"; DateTime) { }
         field(1002; "Size To Process (KB)"; Integer) { }
@@ -152,7 +140,7 @@ table 51006 "TOO Pipou Archive"
         ConfirmLbl: label 'Archive %1 have been partially imported, removing it will erase the logs and pending data that were not imported yet. Continue ?';
     begin
         if GuiAllowed then
-            if Rec."Process Status" = Rec."Process Status"::"⌛ Partially Imported" then
+            if Rec."Process Status" = Rec."Process Status"::"✅ Partially Imported" then
                 if not Confirm(StrSubstNo(ConfirmLbl, Rec."Archive Name")) then
                     Error('');
 
@@ -174,9 +162,9 @@ table 51006 "TOO Pipou Archive"
         ImportedfileName: Text;
         UploadJS: Page "TOO Upload File JS";
         File: File;
-        #if ONPREM
+#if ONPREM
         SelectFilePage: Page "TOO Select File Path";
-        #endif
+#endif
         FileNameHelper: Codeunit "File Management";
         TempBlob: codeunit "Temp Blob";
         DataArchiveInStr: InStream;
@@ -205,7 +193,7 @@ table 51006 "TOO Pipou Archive"
 
             3: // file system upload
                 begin
-                    #if ONPREM
+#if ONPREM
                     // Select file path
                     SelectFilePage.LookupMode(true);
                     if not (SelectFilePage.RunModal() in [Action::LookupOK, Action::OK, Action::Yes]) then
@@ -219,7 +207,7 @@ table 51006 "TOO Pipou Archive"
                     // Import
                     exit(Rec.ImportArchiveFile(ImportedfileName, DataArchiveInStr));
                     File.Close();
-                    #endif
+#endif
                 end;
         end;
     end;
@@ -238,7 +226,6 @@ table 51006 "TOO Pipou Archive"
         FileNo: Integer;
         ChunkData: record "TOO Pipou Archive Files";
         Window: Dialog;
-        ImpExpToolMgt: Codeunit "TOO Import/Export Mgt";
         TempBlob: Codeunit "Temp Blob";
         ArchiveMgt: Codeunit "TOO Pipou Archive Meta Mgt.";
     begin
@@ -280,7 +267,9 @@ table 51006 "TOO Pipou Archive"
         // Default import options
         Rec."Number of Threads" := 4;
         Rec.DeleteData := true;
-        Rec."Import Use SQL Bulk" := true; // for OnPrem
+#if ONPREM
+        Rec."Import Use SQL Bulk" := true; // fastest OnPrem import
+#endif
 
         // Decompress metadata
         if IsMetaGZ then begin
@@ -319,7 +308,7 @@ table 51006 "TOO Pipou Archive"
             ChunkData.Modify();
 
             if GuiAllowed then begin
-                Window.Update(1, ImpExpToolMgt.ProgressBar(FileNo / Rec."No. Files"));
+                Window.Update(1, ProgressBar(FileNo / Rec."No. Files"));
                 Window.Update(2, Format(FileNo) + ' / ' + format(Rec."No. Files"));
             end;
             FileNo += 1;
@@ -329,6 +318,25 @@ table 51006 "TOO Pipou Archive"
         if GuiAllowed then
             Window.CLose();
         exit(true);
+    end;
+
+    procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
+    var
+        i: Integer;
+        ProgressChar: Integer;
+    begin
+        ProgressChar := Round(ProgressPercent * 24, 1, '<') + 1;
+        for i := 1 to 24 do begin
+            if i < ProgressChar then
+                AsciiResult += '▰'
+            else
+                if i = ProgressChar then
+                    AsciiResult += '▴'
+                else
+                    AsciiResult += '▱';
+            if i = 12 then // half of 25
+                AsciiResult += Format(Round(ProgressPercent * 100, 1)).PadLeft(2, '0') + '%';
+        end;
     end;
     #endregion
 
@@ -350,29 +358,18 @@ table 51006 "TOO Pipou Archive"
 
 
     #region Store Meta
-    procedure StoreTableMeta(var TableMeta: Record "Table Metadata"; var TableInfo: Record "Table Information")
+    procedure StoreTableMeta(var TableMeta: Record "Table Metadata"; NoOfRecords: Integer)
     var
         ArchiveTables: Record "TOO Pipou Archive Tables";
-        pp: page "Table Information";
     begin
         ArchiveTables.Init();
         ArchiveTables."Archive ID" := Rec."Archive ID";
         ArchiveTables.DataPerCompany := TableMeta.DataPerCompany;
         ArchiveTables."Table DataClassification" := TableMeta.DataClassification;
-        ArchiveTables."No. of Records" := TableInfo."No. of Records";
-        ArchiveTables."Record Size" := TableInfo."Record Size";
+        ArchiveTables."No. of Records" := NoOfRecords;
         ArchiveTables."Table Caption" := TableMeta.Caption;
         ArchiveTables."Table Name" := TableMeta.Name;
         ArchiveTables."Table ID" := TableMeta.ID;
-        ArchiveTables."Original Data Size (KB)" := TableInfo."Data Size (KB)";
-        if ArchiveTables."Original Data Size (KB)" = 0 then
-            ArchiveTables."Original Data Size (KB)" := 1;
-        ArchiveTables."Original Index Size (KB)" := TableInfo."Index Size (KB)";
-        if ArchiveTables."Original Index Size (KB)" = 0 then
-            ArchiveTables."Original Index Size (KB)" := 1;
-        ArchiveTables."Original SQL Data+Index (KB)" := TableInfo."Size (KB)";
-        if ArchiveTables."Original SQL Data+Index (KB)" = 0 then
-            ArchiveTables."Original SQL Data+Index (KB)" := 1;
         ArchiveTables.Insert();
     end;
 

@@ -1,7 +1,6 @@
 page 51005 "TOO Pipou Archive Files"
 {
     PageType = List;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Archive Files";
     Editable = false;
     Caption = 'Pipou Archive Files';

@@ -11,4 +11,5 @@ enum 51003 "TOO Compression Algo."
     value(4; "libbsc") { }
     value(5; "Auto (On-Premise)") { }
     value(6; "Auto (Cloud)") { }
+    value(10; "MCMX") { }
 }

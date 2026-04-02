@@ -1,10 +1,8 @@
-// This table is only used for empty fieldreference comparison
-// It was created for performance purpose and avoid a cast operation per field comparison
-
 table 51016 "TOO All Types"
 {
     DataClassification = ToBeClassified;
     TableType = Temporary;
+
 
     fields
     {

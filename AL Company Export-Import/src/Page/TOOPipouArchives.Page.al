@@ -1,6 +1,6 @@
 page 51007 "TOO Pipou Archives"
 {
-    Caption = 'Pipou Data Archives';
+    Caption = 'Company Data Archives';
     PageType = List;
     UsageCategory = Lists;
     ApplicationArea = All;
@@ -32,11 +32,6 @@ page 51007 "TOO Pipou Archives"
                 field("Archive Sequence No."; Rec."Archive Sequence No.")
                 {
                     ApplicationArea = All;
-                }
-                field("Total Original SQL Size (KB)"; Rec."Total Original Data Size (KB)")
-                {
-                    ApplicationArea = All;
-
                 }
                 field("Files Size (KB)"; Rec."Files Size (KB)")
                 {
@@ -94,8 +89,11 @@ page 51007 "TOO Pipou Archives"
                 PromotedIsBig = true;
 
                 trigger OnAction()
+                var
+                    ConfirmLbl: Label 'The archive file is ~%1 %2.\ Downlaod this file ?';
                 begin
-                    Rec.DownloadArchiveFile();
+                    if Confirm(StrSubstNo(ConfirmLbl, round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
+                        Rec.DownloadArchiveFile();
                 end;
             }
             action(Apply)
@@ -114,6 +112,7 @@ page 51007 "TOO Pipou Archives"
                     PipouImport: Page "TOO Pipou Import Asst. Setup";
                 begin
                     if Rec."Archive Name" <> '' then begin
+                        PipouImport.SetOpenAtStep(3);
                         PipouImport.SetRecord(Rec);
                         PipouImport.SetTableView(Rec);
                         PipouImport.Run();
@@ -137,7 +136,7 @@ page 51007 "TOO Pipou Archives"
                     ArchLogs: Record "TOO Pipou Import Log";
                     StatusErrLbl: Label 'The processing state must be empty to reset import.';
                 begin
-                    if not (Rec."Process Status" in [Rec."Process Status"::" ", Rec."Process Status"::"✅ Imported"]) then
+                    if not (Rec."Process Status" in [Rec."Process Status"::" ", Rec."Process Status"::"✅ Imported", Rec."Process Status"::"✅ Partially Imported"]) then
                         Error(StatusErrLbl);
 
                     if Confirm(StrSubstNo('Continue and reset any current import progression for selected archive "%1" ?', Rec."Archive Name")) then begin

@@ -1,7 +1,6 @@
 page 51010 "TOO Pipou Archive Fields"
 {
     PageType = List;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Archive fields";
     InsertAllowed = false;
     DeleteAllowed = false;

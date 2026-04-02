@@ -7,8 +7,8 @@ controladdin TOOPageAutoRefreshAddin
     RequestedHeight = 0;
     RequestedWidth = 0;
     // The Scripts property can reference both external and local scripts.
-    Scripts = 'PageAutoRefreshAddin-Addin.js';
-    StartupScript = 'PageAutoRefreshAddin-Startup.js';
+    Scripts = 'src/AddinAutoRefresh/PageAutoRefreshAddin-Addin.js';
+    StartupScript = 'src/AddinAutoRefresh/PageAutoRefreshAddin-Startup.js';
 
 
     // The procedure declarations specify what JavaScript methods could be called from AL.

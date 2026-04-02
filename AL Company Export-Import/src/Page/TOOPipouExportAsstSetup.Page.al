@@ -12,19 +12,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
         area(Content)
         {
             // *** Top Banner ***
-            group(StandardBanner)
-            {
-                Caption = '', Locked = true;
-                Editable = false;
-                ShowCaption = false;
-                Visible = not FinishEnable;
-
-                field(MediaResourcesStandard; MediaResourcesStandard."Media Reference")
-                {
-                    Editable = false;
-                    ShowCaption = false;
-                }
-            }
             #region Step 1 Intro
             group(Step1)
             {
@@ -67,70 +54,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
                     ToolTip = 'Specify the company to export data from.', Comment = 'Spécifier la société depuis la quel vous souhaitez exporter les données.';
                     TableRelation = Company.Name;
                     NotBlank = true;
-
-                    trigger OnValidate()
-                    var
-                        TableInfo: Record "Table Information";
-                        Win: dialog;
-                        CompRatio: Decimal;
-                        Math: Codeunit Math;
-                        EstCompSizeMin: Integer;
-                        EstCompSizeMax: Integer;
-                        DurRatio: Decimal;
-                    begin
-
-                        Win.Open(CalcCompanySize);
-                        // List tables with data
-                        TableInfo.SetRange("Company Name", ExportCompanyName);
-                        TableInfo.SetFilter("No. of Records", '>0');
-                        FilterTableInfo(TableInfo, true, true);
-                        // Stats
-                        CompanyTotalTables := TableInfo.Count();
-                        CompanyTotalDataSize := 0;
-                        CompanyTotalRecords := 0;
-                        if TableInfo.FindSet() then
-                            repeat
-                                CompanyTotalDataSize += TableInfo."Data Size (KB)";
-                                CompanyTotalRecords += TableInfo."No. of Records";
-                            until TableInfo.Next() = 0;
-                        // Calculate reduction ratio 
-                        // Avg 89% with Libbsc lvl 1
-                        CompRatio := 0.11;
-                        EstCompSizeMin := Round(CompanyTotalDataSize * CompRatio / 1024, 1);
-                        EstCompSizeMax := Round(CompanyTotalDataSize * CompRatio * 1.3 / 1024, 1); // + 30%
-                        EstCompSize := format(EstCompSizeMin, 0, '<Sign><Integer Thousand><1000Character, >') + ' MB - ' + Format(EstCompSizeMax, 0, '<Sign><Integer Thousand><1000Character, >') + ' MB';
-                        DurRatio := Math.Max(0.7, 1 - (0.0275 * ((CompanyTotalDataSize - 512000) / 1024 / 1024)));
-                        EstExpDuration := Round(DurRatio * EstCompSizeMax * 3000, 10000); // ~3s per final MB
-                        Win.Close();
-                    end;
                 }
-                field(CompanyTotalDataSize; Format(CompanyTotalDataSize, 0, '<Sign><Integer Thousand><1000Character, >') + ' KB')
-                {
-                    Caption = 'Total company Size', Comment = 'Poids total societe';
-                    Editable = false;
-                }
-                field(CompanyTotalTables; Format(CompanyTotalTables, 0, '<Sign><Integer Thousand><1000Character, >'))
-                {
-                    Caption = 'Number of non-empty tables', Comment = 'Nombre de table non vide';
-                    Editable = false;
-                }
-                group(Estimation)
-                {
-                    Caption = '';
-                    InstructionalText = 'Bellow estimation are calculated for configuration : TBIN format, Auto compression, exclude logs and archives, 4 Threads.';
-
-                    field(EstCompSize; EstCompSize)
-                    {
-                        Caption = 'Estimated Compressed Size ', Comment = 'Poids de l''export estime';
-                        Editable = false;
-                    }
-                    field(EstExpDuration; EstExpDuration)
-                    {
-                        Caption = 'Estimated Export duration', Comment = 'Duree d''export estimee';
-                        Editable = false;
-                    }
-                }
-
             }
             #endregion
             #region Step 3 Data
@@ -324,9 +248,10 @@ page 51008 "TOO Pipou Export Asst. Setup"
                         Caption = 'Classified Data Handling', Comment = 'Traitement des données sensibles';
                         Editable = false;
                     }
-                    field(CompanyTotalDataSize2; Format(CompanyTotalDataSize, 0, '<Sign><Integer Thousand><1000Character, >') + ' KB')
+                    field(NoRecs; CompanyTotalRecords)
                     {
-                        Caption = 'Total Selected Size', Comment = 'Poids données à exporter';
+                        Caption = 'Total Number of Records';
+                        Editable = false;
                     }
                 }
                 group(Group62)
@@ -343,21 +268,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
                 }
             }
             #endregion
-
-            // *** Finish banner ***
-            group(FinishedBanner)
-            {
-                Caption = '', Locked = true;
-                Editable = false;
-                ShowCaption = false;
-                Visible = Step6Visible;
-
-                field(MediaResourcesDone; MediaResourcesDone."Media Reference")
-                {
-                    Editable = false;
-                    ShowCaption = false;
-                }
-            }
         }
     }
 
@@ -411,7 +321,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
     trigger OnInit()
     begin
-        LoadBanners();
         Step := 1;
         EnableControls();
         ArchiveGUID := CreateGuid();
@@ -435,7 +344,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
         PreferedCompressionMode := PreferedCompressionMode::"Auto (Cloud)";
         EnableOptimalEncode := true;
         // 200 Mb
-        MaxChunkSize := 200 * 1024 * 1024; 
+        MaxChunkSize := 200 * 1024 * 1024;
         MaxChunkSizeOption := MaxChunkSizeOption::"200 MB";
 #endif
     end;
@@ -443,7 +352,11 @@ page 51008 "TOO Pipou Export Asst. Setup"
     trigger OnOpenPage()
     var
         ThreadMgt: codeunit "TOO Pipou Threads Mgt.";
+        WriteInsideTryFunctionEnabled: Codeunit "TOO WriteInsideTryEnabled";
+        WriteInTryMusTBeEnabled: Label 'The service instance does not allow transaction inside TryFunction, this must be enabled to run this process.\Use Business Central Administration Shell to set this configuration :\Powershell:\Set-NavServerConfiguration InstanceName -KeyName DisableWriteInsideTryFunctions -KeyValue false \-\Restarting Business Central service is required after this change.';
     begin
+        if not WriteInsideTryFunctionEnabled.Run() then
+            Error(WriteInTryMusTBeEnabled);
         ThreadMgt.CheckThreadsRunning();
     end;
 
@@ -491,15 +404,11 @@ page 51008 "TOO Pipou Export Asst. Setup"
         ArchiveTables: Record "TOO Pipou Archive Tables";
     begin
         // Refresh company total data size
-        ArchiveTables.SetRange("Archive ID", ArchiveGUID);
         CompanyTotalTables := ArchiveTables.Count();
-        CompanyTotalDataSize := 0;
         CompanyTotalRecords := 0;
-        if ArchiveTables.FindSet() then
-            repeat
-                CompanyTotalDataSize += ArchiveTables."Original Data Size (KB)";
-                CompanyTotalRecords += ArchiveTables."No. of Records";
-            until ArchiveTables.Next() = 0;
+        ArchiveTables.SetRange("Archive ID", ArchiveGUID);
+        ArchiveTables.CalcSums("No. of Records");
+        CompanyTotalRecords += ArchiveTables."No. of Records";
 
         Step6Visible := true;
         BackEnable := true;
@@ -523,63 +432,76 @@ page 51008 "TOO Pipou Export Asst. Setup"
     local procedure CreateTablesLists()
     var
         TableMeta: Record "Table Metadata";
-        TableInfo: Record "Table Information";
         Fields: Record Field;
         Win: Dialog;
         I: Integer;
+        RecRef: RecordRef;
+        NoOfRec: Integer;
     begin
         Win.Open('Generating table and field definition list... \ #1########');
-        TableInfo.SetRange("Company Name", ExportCompanyName);
-        TableInfo.SetFilter("No. of Records", '>0');
-        FilterTableInfo(TableInfo, not IncludeLogsTables, not IncludeArchiveTables);
-        if TableInfo.FindSet() then
+        FilterTableInfo(TableMeta, not IncludeLogsTables, not IncludeArchiveTables);
+        CompanyTotalTables := TableMeta.Count();
+        if TableMeta.FindSet() then
             repeat
                 // Skip most of system tables, unless they can be imported
-                if (TableInfo."Table No." < 2000000000) or (TableInfo."Table No." IN [database::"User Personalization", database::"Page Data Personalization", database::"Web Service", database::"Report Layout Definition", database::"Record Link"]) then begin
+                if (TableMeta.ID < 2000000000) then begin
+                    // or (TableMeta.ID IN [database::"User Personalization", database::"Page Data Personalization", database::"Web Service", database::"Report Layout Definition", database::"Record Link"]) then begin
                     // Search fields
-                    Fields.SetRange(TableNo, TableInfo."Table No.");
+                    Fields.SetRange(TableNo, TableMeta.ID);
                     if IncludeAuditFields then
                         Fields.SetFilter("No.", '<>2000000000') // skip systemid, generated by sql at insert, created/modified fields are roughtly 2000000001-2000000004
                     else
                         Fields.SetFilter("No.", '<2000000000'); // skip system audit fields
                     Fields.SetRange(Class, Fields.Class::Normal);
-                    Fields.SetRange(ExternalName, '');
                     Fields.SetRange(ObsoleteState, Fields.ObsoleteState::No);
                     Fields.SetRange(Enabled, true);
                     if Fields.FindSet() then begin
-                        // Store Table
-                        TableMeta.Get(TableInfo."Table No.");
-                        Rec.StoreTableMeta(TableMeta, TableInfo);
-                        // Store Fields
-                        repeat
-                            Rec.StoreFieldMeta(Fields);
-                        until Fields.Next() = 0;
+                        // Check if the table contain any records 
+                        RecRef.Open(TableMeta.ID, false, ExportCompanyName);
+                        NoOfRec := RecRef.Count();
+                        RecRef.Close();
+                        if NoOfRec > 0 then begin
+                            // Store Table
+                            Rec.StoreTableMeta(TableMeta, NoOfRec);
+                            // Store Fields
+                            repeat
+                                Rec.StoreFieldMeta(Fields);
+                            until Fields.Next() = 0;
+                        end;
                     end;
                 end;
                 I += 1;
                 Win.Update(1, ProgressBar(I / CompanyTotalTables));
-            until TableInfo.Next() = 0;
+            until TableMeta.Next() = 0;
         Win.Close();
     end;
 
-    local procedure FilterTableInfo(var TableInfo: Record "Table Information"; ExclLogsTables: Boolean; ExclArchiveTables: Boolean)
+    local procedure FilterTableInfo(var Tables: Record "Table Metadata"; ExclLogsTables: Boolean; ExclArchiveTables: Boolean)
     var
         NameFilter: Text;
         IDFilter: Text;
     begin
-        // Exclude self tables
+        // Exclude Self
         IDFilter := StrSubstNo('<>%1&<>%2&<>%3&<>%4&<>%5&<>%6&<>%7&<>%8&<>%9&<>%10&<>%11&<>%12&<>%13&<>%14&<>%15', Database::"TOO Pipou Archive", Database::"TOO Pipou Archive Tables", Database::"TOO Pipou Archive Fields", Database::"TOO Pipou Archive Files", Database::"TOO Pipou Import Log", database::"TOO Pipou Thread", Database::"Config. Package Data", Database::"Config. Package Error", Database::"Config. Package Record", Database::"Configuration Package File", Database::"Config. Record For Processing", database::"Error Message", database::"Data Migration Error", Database::Session, Database::"Session Event");
+        // Exclude Buffers
         NameFilter := '<>* Buffer';
+        // Exclude Logs       
         if ExclLogsTables then begin
             NameFilter += '&<>* Log&<>* log&<>* Logs&<>* logs&<>*Log Entry';
-            //IDFilter += StrSubstNo('', ...);
+            IDFilter += StrSubstNo('&<>%1&<>%2&<>%3', database::"Config. Package Data", database::"Config. Package Error", Database::"Config. Package Record");
         end;
+        // Exclude Archive
         if ExclArchiveTables then begin
             NameFilter += '&<>* Archive*&<>* archive*&<>* Archives*&<>* archives*';
-            IDFilter += StrSubstNo('&<>%1&<>%2&<>%3&<>%4', database::"Sent Email", database::"Sent Notification Entry", database::"Posted Gen. Journal Batch", database::"Posted Gen. Journal Line")
+            IDFilter += StrSubstNo('&<>%1&<>%2&<>%3&<>%4', database::"Sent Email", database::"Sent Notification Entry", database::"Posted Gen. Journal Batch", database::"Posted Gen. Journal Line");
+            IDFilter += StrSubstNo('&<>%1&<>%2&<>%3', database::"Config. Package Data", database::"Config. Package Error", Database::"Config. Package Record");
         end;
-        TableInfo.Setfilter("Table Name", NameFilter); // technical tables
-        TableInfo.SetFilter("Table No.", IDFilter);
+        // Exclude not importable systems/virtual tables
+        IDFilter += StrSubstNo('&<>%1&<>%2&<>%3&<>%4', 150 /*"Signup Context Values"*/, 2000000255 /*"Signup Context"*/, 2610 /*"Feature Data Update Status"*/, 9999 /*"Upgrade Tags"*/);
+
+        Tables.Setfilter("Name", NameFilter);
+        Tables.SetFilter(ID, IDFilter);
+        Tables.SetRange(DataIsExternal, false);
     end;
     #endregion
 
@@ -591,7 +513,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
         NothingToExport: Label 'There were no data found to export in given company. If you provide a date time for differential export, make sure records were created after this date.';
         ProcessingStart: DateTime;
         PipouExport: Codeunit "TOO Pipou Export Data";
-        TableInfo: Record "Table Information";
+        RecRef: RecordRef;
         ArchiveTables: Record "TOO Pipou Archive Tables";
     begin
         // Create archive record
@@ -609,20 +531,16 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Archive."Diff. Export Start DT" := Rec."Diff. Export Start DT";
         Archive."Process Status" := Archive."Process Status"::"⌛ Exporting";
         Archive.ClassifiedDataHandling := ClassifiedDataHandling;
-        Archive."Enable Optimal Encode" := EnableOptimalEncode;
         Archive."Enable Columns Transcoding" := EnableColumnTranscode;
         // Set the actual number of tables and record after user selection
         ArchiveTables.SetRange("Archive ID", ArchiveGUID);
-        if ArchiveTables.FindSet() then
-            repeat
-                if TableInfo.Get(Archive."Exported From Company", ArchiveTables."Table ID") then begin
-                    Archive."Total Records" += TableInfo."No. of Records";
-                    Archive."Total Tables" += 1;
-                end;
-            until ArchiveTables.Next() = 0;
+        Archive."Total Tables" := ArchiveTables.Count();
+        ArchiveTables.CalcSums("No. of Records");
+        Archive."Total Records" := ArchiveTables."No. of Records";
 
+        // Store the archive informations
         if not Archive.Insert(true) then
-            Archive.Modify(); // second time pressing export
+            Archive.Modify(); // if second time pressing export
 
         // Run exports
         ProcessingStart := CurrentDateTime;
@@ -673,17 +591,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
         FinishEnable := false;
     end;
 
-    local procedure LoadBanners()
-    var
-        MediaRepositoryDone: Record "Media Repository";
-        MediaRepositoryStandard: Record "Media Repository";
-    begin
-        if MediaRepositoryStandard.Get('AssistedSetup-NoText-400px.png', Format(CurrentClientType())) and
-            MediaRepositoryDone.Get('AssistedSetupDone-NoText-400px.png', Format(CurrentClientType()))
-        then
-            if MediaResourcesStandard.Get(MediaRepositoryStandard."Media Resources Ref") and MediaResourcesDone.Get(MediaRepositoryDone."Media Resources Ref") then;
-    end;
-
     procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
     var
         i: Integer;
@@ -694,18 +601,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
             if i < ProgressChar then
                 AsciiResult += '▰'
             else
-                if i = ProgressChar then begin
-                    case (((CurrentDateTime().Time().Second * 2) + (round(CurrentDateTime().Time().Millisecond / 1000, 1))) mod 4) of
-                        0:
-                            AsciiResult += '▴';
-                        1:
-                            AsciiResult += '◂';
-                        2:
-                            AsciiResult += '▾';
-                        3:
-                            AsciiResult += '▸';
-                    end;
-                end else
+                if i = ProgressChar then
+                    AsciiResult += '▴'
+                else
                     AsciiResult += '▱';
             if i = 12 then // half of 25
                 AsciiResult += Format(Round(ProgressPercent * 100, 1)).PadLeft(2, '0') + '%';
@@ -713,9 +611,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
     end;
 
     var
-        CalcCompanySize: Label 'Calculating company data size...';
-        MediaResourcesDone: Record "Media Resources";
-        MediaResourcesStandard: Record "Media Resources";
         BackEnable: Boolean;
         FinishEnable: Boolean;
         NextEnable: Boolean;
@@ -738,11 +633,8 @@ page 51008 "TOO Pipou Export Asst. Setup"
         PreferedCompressionMode: enum "TOO Compression Algo.";
         MaxChunkSize: Integer; // in bytes, default is 200MB
         MaxChunkSizeOption: Option "50 MB","75 MB","100 MB","150 MB","200 MB";
-        CompanyTotalDataSize: Integer;
         CompanyTotalTables: Integer;
         CompanyTotalRecords: Integer;
-        EstCompSize: Text;
-        EstExpDuration: Duration;
         ArchiveGUID: Guid; // generate before Archive rec for table and field list
         EnableOptimalEncode, EnableColumnTranscode : Boolean;
         AdvancedEncodingVisible: Boolean;

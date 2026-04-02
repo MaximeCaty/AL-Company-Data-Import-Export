@@ -1,5 +1,8 @@
+#if ONPREM
 codeunit 51011 "TOO SQL Helper FindSet"
 {
+    EventSubscriberInstance = Manual;
+
     var
         SQLFilter: Text;
         EmptyGuid: Guid;
@@ -16,237 +19,6 @@ codeunit 51011 "TOO SQL Helper FindSet"
         ListSQLFieldsWithAlias: List of [Text];
         FieldTypes: array[500] of FieldType;
 
-
-    procedure Open(OpenTableID: Integer; FromCompanyName: Text)
-    var
-        SourceTableName: Text;
-        Fields: Record Field;
-        PublishedApp: Record "Published Application";
-    begin
-        TableMeta.Get(OpenTableID);
-        SQLFilter := '';
-        SQLSelect := '';
-        TableID := OpenTableID;
-        TableCompanyName := FromCompanyName;
-        Nofields := 0;
-        RequireExtJoin := false;
-        clear(ListOfFieldInTableExt);
-        clear(ListOfFieldInTableExtAppID);
-        clear(ListSQLFieldsWithAlias);
-
-        // Get SQL Table Name
-        SourceTableName := EscapeSQLChar(TableMeta.Name);
-        if TableMeta.DataPerCompany then
-            if IsNullGuid(TableMeta."App ID") then
-                BaseTableSQLName := StrSubstNo('%1$%2', TableCompanyName, SourceTableName)
-            else
-                BaseTableSQLName := StrSubstNo('%1$%2$%3', TableCompanyName, SourceTableName, DELCHR(TableMeta."App ID", '=', '{}'))
-        else
-            if IsNullGuid(TableMeta."App ID") then
-                BaseTableSQLName := SourceTableName
-            else
-                BaseTableSQLName := StrSubstNo('%1$%2', SourceTableName, DELCHR(TableMeta."App ID", '=', '{}'));
-        ExtTableSQLName := BaseTableSQLName + '$ext';
-
-        // Get list of fields stored in extension table
-        Fields.SetLoadFields("No.", "App Runtime Package ID");
-        Fields.SetRange(TableNo, OpenTableID);
-        Fields.SetRange(Class, Fields.Class::Normal);
-        Fields.SetRange(ExternalName, '');
-        Fields.SetFilter("App Runtime Package ID", '<>%1', EmptyGuid);
-        if Fields.FindSet() then
-            repeat
-                // Check that the field is from different App ID than base table (tableextension in the same project are stored in base table)
-                PublishedApp.SetLoadFields(ID);
-                PublishedApp.SetFilter(ID, '<>%1', TableMeta."App ID");
-                PublishedApp.SetRange("Runtime Package ID", Fields."App Runtime Package ID");
-                PublishedApp.SetRange(Installed, true);
-                if PublishedApp.FindFirst() then begin
-                    ListOfFieldInTableExt.Add(Fields."No.");
-                    ListOfFieldInTableExtAppID.Add(PublishedApp.ID);
-                end;
-            until Fields.Next() = 0;
-    end;
-
-
-    #region Filter
-    procedure SetFilter(FieldRef: FieldRef; Filter: Text; Value1: Variant)
-    begin
-        SetFilter(FieldRef.Number, FieldRef.Name, FieldRef.Type, StrSubstNo(Filter, Value1));
-    end;
-
-    procedure SetFilter(FieldRef: FieldRef; Filter: Text)
-    begin
-        SetFilter(FieldRef.Number, FieldRef.Name, FieldRef.Type, Filter);
-    end;
-
-    procedure SetFilter(FieldID: Integer; FieldName: Text; FieldType: FieldType; Filter: Text; Value1: Variant)
-    begin
-        SetFilter(FieldID, FieldName, FieldType, StrSubstNo(Filter, Value1));
-    end;
-
-    procedure SetFilter(FieldID: Integer; FieldName: Text; FieldType: FieldType; Filter: Text)
-    var
-        FieldSQLName: Text;
-        IndexOfFieldExt: Integer;
-    begin
-        if SQLFilter <> '' then
-            SQLFilter += ' AND ';
-
-        // Get Field SQL Name with extended App ID
-        case FieldID of
-            2000000001:
-                FieldSQLName := '$systemCreatedAt';
-            2000000002:
-                FieldSQLName := '$systemCreatedBy';
-            2000000003:
-                FieldSQLName := '$systemModifiedAt';
-            2000000004:
-                FieldSQLName := '$systemModifiedBy';
-            else
-                FieldSQLName := EscapeSQLChar(FieldName);
-        end;
-        IndexOfFieldExt := ListOfFieldInTableExt.IndexOf(FieldID);
-        if IndexOfFieldExt > 0 then
-            FieldSQLName := 'ext.[' + FieldSQLName + '$' + DELCHR(ListOfFieldInTableExtAppID.Get(IndexOfFieldExt), '=', '{}') + '] ' // Field on ext table
-        else
-            FieldSQLName := 't.[' + FieldSQLName + '] '; // Field on original table
-
-        // Convert AL filter to SQL
-        if FieldType in [FieldType::Text, FieldType::Code, FieldType::Date, FieldType::DateTime, FieldType::Time, FieldType::DateFormula, FieldType::RecordId] then
-            SQLFilter := StrSubstNo(ConvertFilterToSQL(Filter, true), FieldSQLName) // quote for text like values
-        else
-            SQLFilter := StrSubstNo(ConvertFilterToSQL(Filter, false), FieldSQLName); // no quote for numericals
-    end;
-    #endregion
-
-    #region Load Field
-    procedure AddLoadfields(var Fields: Record Field)
-    var
-        FieldsType: FieldType;
-    begin
-        case Fields.Type of
-            /*
-            OptionMembers = TableFilter,RecordID,OemText,Date,Time,DateFormula,Decimal,Media,MediaSet,Text,Code,Binary,BLOB,Boolean,Integer,OemCode,Option,BigInteger,Duration,GUID,DateTime;
-            // This list must stay in sync with NCLOptionMetadataNavTypeField
-            OptionOrdinalValues = 4912, 4988, 11519, 11775, 11776, 11797, 12799, 26207, 26208, 31488, 31489, 33791, 33793, 34047, 34559, 35071, 35583, 36095, 36863, 37119, 37375;
-            */
-            4912:
-                FieldsType := FieldsType::TableFilter;
-            4988:
-                FieldsType := FieldsType::RecordID;
-            11519:
-                FieldsType := FieldsType::Text; //OemText
-            11775:
-                FieldsType := FieldsType::Date;
-            11776:
-                FieldsType := FieldsType::Time;
-            11797:
-                FieldsType := FieldsType::DateFormula;
-            12799:
-                FieldsType := FieldsType::Decimal;
-            26207:
-                FieldsType := FieldsType::Media;
-            26208:
-                FieldsType := FieldsType::MediaSet;
-            31488:
-                FieldsType := FieldsType::Text;
-            31489:
-                FieldsType := FieldsType::Code;
-            33791:
-                FieldsType := FieldsType::BLOB; //Binary
-            33793:
-                FieldsType := FieldsType::BLOB;
-            34047:
-                FieldsType := FieldsType::Boolean;
-            34559:
-                FieldsType := FieldsType::Integer;
-            35071:
-                FieldsType := FieldsType::Code; //OemCode;
-            35583:
-                FieldsType := FieldsType::Option;
-            36095:
-                FieldsType := FieldsType::BigInteger;
-            36863:
-                FieldsType := FieldsType::Duration;
-            37119:
-                FieldsType := FieldsType::GUID;
-            37375:
-                FieldsType := FieldsType::DateTime;
-        end;
-        AddLoadfields(Fields."No.", Fields.FieldName, FieldsType);
-    end;
-
-    procedure AddLoadfields(var FieldRef: FieldRef)
-    begin
-        AddLoadfields(FieldRef.Number, FieldRef.Name, FieldRef.Type);
-    end;
-
-    procedure AddLoadfields(FieldID: Integer; FieldName: Text; FieldType: FieldType)
-    var
-        IndexOfFieldExt: Integer;
-        FieldSQLName: Text;
-    begin
-
-        // Calculate SQL field from AL name
-        case FieldID of
-            2000000001:
-                FieldSQLName := '$systemCreatedAt';
-            2000000002:
-                FieldSQLName := '$systemCreatedBy';
-            2000000003:
-                FieldSQLName := '$systemModifiedAt';
-            2000000004:
-                FieldSQLName := '$systemModifiedBy';
-            else
-                FieldSQLName := EscapeSQLChar(FieldName);
-        end;
-        IndexOfFieldExt := ListOfFieldInTableExt.IndexOf(FieldID);
-
-        // Get wether the field is in table extension
-        if IndexOfFieldExt > 0 then begin
-            FieldSQLName := 'ext.[' + FieldSQLName + '$' + DELCHR(ListOfFieldInTableExtAppID.Get(IndexOfFieldExt), '=', '{}') + ']';
-            RequireExtJoin := true
-        end else
-            FieldSQLName := 't.[' + FieldSQLName + ']';
-        ListSQLFieldsWithAlias.Add(FieldSQLName);
-
-        // Add the field to select
-        if Nofields > 0 then
-            SQLSelect += ',';
-        SQLSelect += FieldSQLName;
-
-        Nofields += 1;
-        FieldTypes[Nofields] := FieldType;
-    end;
-    #endregion
-
-    #region Select
-    procedure GetFindSetSQL() SQLString: Text
-    begin
-        exit(GetFindSetSQL(0));
-    end;
-
-    procedure GetFindSetSQL(Top: Integer) SQLString: Text
-    var
-        TopStr: Text;
-    begin
-        // Build SQL Query including table extension
-        // Based on input table and loadfields
-        if Top > 0 then
-            TopStr := ' TOP ' + format(Top);
-
-        if RequireExtJoin then
-            SQLString := 'SELECT ' + TopStr + SQLSelect + ' ' +
-                        StrSubstNo('FROM [%1] AS t ', BaseTableSQLName) + ' ' +
-                        StrSubstNo('LEFT JOIN [%1] AS ext ON ', ExtTableSQLName) + GetTableExtJoinCondition(TableID, 't', 'ext')
-        else
-            SQLString := 'SELECT ' + TopStr + SQLSelect + ' FROM [' + BaseTableSQLName + '] AS t';
-
-        if SQLFilter <> '' then
-            SQLString += ' WHERE ' + TopStr + SQLFilter;
-    end;
-    #endregion
 
     #region internal
     local procedure GetTableExtJoinCondition(TableID: Integer; BaseAlias: Text; ExtAlias: Text) JoinCondition: Text
@@ -288,6 +60,17 @@ codeunit 51011 "TOO SQL Helper FindSet"
         exit(ActiveSession."Server Instance Name");
     end;
 
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"XML Buffer Writer", 'OnBeforeCanPassValue', '', false, false)]
+    local procedure XMLBufferSkipLongValues(Name: Text; Value: Text; var ReturnValue: Boolean; var IsHandled: Boolean)
+    var
+        XMLBuffer: Record "XML Buffer";
+    begin
+        if StrLen(Value) > MaxStrLen(XMLBuffer.Value) then begin
+            ReturnValue := false;
+            IsHandled := true;
+        end;
+    end;
+
     procedure GetSqlConnectionString(ForUpdate: Boolean): Text
     var
         InstanceConfigPath, RootConfigPath, ConfigFilePath : Text;
@@ -297,6 +80,7 @@ codeunit 51011 "TOO SQL Helper FindSet"
         DataSource: Text;
         SQLConnectionString: TextBuilder;
         XMLBuffer: Record "XML Buffer" temporary;
+        Self: Codeunit "TOO SQL Helper FindSet";
     begin
         // BC Instance config
         InstanceConfigPath := ApplicationPath() + 'Instances\' + GetServerInstanceName() + '\CustomSettings.config';
@@ -311,7 +95,9 @@ codeunit 51011 "TOO SQL Helper FindSet"
             Error('Server instance configuration not found. Unable to determine SQL connection string.');
 
         // Parse XML
+        BindSubscription(Self); // skip attribute text value 250 overflow errors
         XMLBuffer.Load(ConfigFilePath);
+        UnbindSubscription(Self);
 
         // Loop configuration properties
         DatabaseServer := GetConfigValue(XMLBuffer, 'DatabaseServer');
@@ -330,11 +116,6 @@ codeunit 51011 "TOO SQL Helper FindSet"
         SQLConnectionString.Append('Integrated Security=True;');
         SQLConnectionString.Append('TrustServerCertificate=True;');
         SQLConnectionString.Append('Connection Timeout=10;');
-        SqlConnectionString.Append('MultipleActiveResultSets=False;');
-        SqlConnectionString.Append('Packet Size=32767;'); // ← biggest potential win for large data
-        if not ForUpdate then
-            SqlConnectionString.Append('Enlist=False;');  // free if no transactions
-        SqlConnectionString.Append('Min Pool Size=10;');  // warm pool for repeated calls
         exit(SQLConnectionString.ToText());
     end;
 
@@ -446,3 +227,4 @@ codeunit 51011 "TOO SQL Helper FindSet"
     end;
     #endregion
 }
+#endif

@@ -48,15 +48,11 @@ table 51009 "TOO Pipou Thread"
         {
             DataClassification = SystemMetadata;
         }
-        field(1150; "Total Size To Proceed KB"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(1160; "Proceed Size KB"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
         field(1200; "Total Rec. Proceed"; Integer)
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(1210; "Total Rec. To Process"; Integer)
         {
             DataClassification = SystemMetadata;
         }
@@ -69,9 +65,6 @@ table 51009 "TOO Pipou Thread"
         key(Key1; "Thread No.")
         {
             Clustered = true;
-        }
-        key(SizeSort; "Total Size To Proceed KB")
-        {
         }
         key(SumPerArchiveKey; "Archive ID")
         {

@@ -7,14 +7,13 @@ codeunit 51005 "TOO Pipou Export Data"
     procedure MultiThreadExport(var Archive: Record "TOO Pipou Archive")
     var
         Win: Dialog;
-        Progress: Label 'Exporting Data from company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\SQL Data (KB) : #5########\Records : #6######\Compressed Size (KB) : #7#######-\#8######\-\#9######\-\#10######\-\#11######\-\#12######\-\#13######';
-        DataProceed: Integer;
+        Progress: Label 'Exporting Data from company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\Records : #6######\Compressed Size (KB) : #7#######-\#8######\-\#9######\-\#10######\-\#11######\-\#12######\-\#13######';
+        NothingToImportLbl: Label 'There is nothing left to import for selected table. Reset the archive import state to redo the import.';
         RecProceed: Integer;
         TotFileSize: Decimal;
         TotCompSize: Decimal;
         ElapsedTime: Duration;
         ThreadTxt: Text;
-        ArchTotalSize: Integer;
         Thread: Record "TOO Pipou Thread";
         SessionID: Integer;
         AllThreadCompleted: Boolean;
@@ -22,8 +21,11 @@ codeunit 51005 "TOO Pipou Export Data"
         RemProgress: Decimal;
         GlobalProgress: Decimal;
         OtherArchive: Record "TOO Pipou Archive";
+        ArchiveTables: Record "TOO Pipou Archive Tables";
+        ArchiveFiles: Record "TOO Pipou Archive Files";
         ErrorThrown: Boolean;
         ErrorMessage: Text;
+        ArchTotalRecSize: Integer;
     begin
         ThreadHelper.CheckThreadsRunning();
 
@@ -32,12 +34,10 @@ codeunit 51005 "TOO Pipou Export Data"
         Archive.TestField("Number of Threads");
         Archive.CalcFields("No. Tables");
         Archive.TestField("No. Tables");
-        Archive.CalcFields("Total Original Data Size (KB)");
-        Archive.TestField("Total Original Data Size (KB)");
+        Archive.TestField("Total Records");
         Archive.TestField("Process Status", Archive."Process Status"::"⌛ Exporting");
         if (Archive."Number of Threads" < 1) or (Archive."Number of Threads" > 6) then
             Error('The number of threads to run the process must be within 1-6 range.');
-        ArchTotalSize := Archive."Total Original Data Size (KB)"; // avoid calcfield on every update
 
         // Remove any other pending/failed export
         OtherArchive.SetFilter("Archive ID", '<>%1', Archive."Archive ID");
@@ -50,6 +50,13 @@ codeunit 51005 "TOO Pipou Export Data"
 
         // Split tables ranges across threads
         ThreadHelper.CreateExportThreads(Archive);
+
+        // Calc total rec to export based on selected tables
+        ArchiveTables.SetRange("Archive ID", Archive."Archive ID");
+        ArchiveTables.CalcSums("No. of Records");
+        ArchTotalRecSize := ArchiveTables."No. of Records";
+        if ArchTotalRecSize = 0 then
+            error(NothingToImportLbl);
 
         // Set state to exporting
         Archive."Process Status" := Archive."Process Status"::"⌛ Exporting";
@@ -98,56 +105,54 @@ codeunit 51005 "TOO Pipou Export Data"
             // Monitor thread until all data proceed
             Win.Open(Progress);
             Win.Update(1, Archive."Exported From Company");
-            DataProceed := 0;
+
             while (not AllThreadCompleted) do begin
                 sleep(900);
 
                 AllThreadCompleted := true; // false if any thread not completed
-                DataProceed := 0;
                 RecProceed := 0;
                 TotFileSize := 0;
                 TotCompSize := 0;
 
                 // Thread 1 :
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                ThreadTxt := ThreadHelper.UpdateThreadProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                 Win.Update(8, ThreadTxt);
                 if ErrorThrown then ThrowError(Archive, ErrorMessage);
 
                 // Thread 2 :
                 if Archive."Number of Threads" > 1 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(9, ThreadTxt);
                     if ErrorThrown then ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 3 :
                 if Archive."Number of Threads" > 2 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(10, ThreadTxt);
                     if ErrorThrown then ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 4 :
                 if Archive."Number of Threads" > 3 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(11, ThreadTxt);
                     if ErrorThrown then ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 5 :
                 if Archive."Number of Threads" > 4 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(12, ThreadTxt);
                     if ErrorThrown then ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 6 :
                 if Archive."Number of Threads" > 5 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(13, ThreadTxt);
                     if ErrorThrown then ThrowError(Archive, ErrorMessage);
                 end;
 
                 // Global progression
-                GlobalProgress := ((DataProceed / ArchTotalSize) + (RecProceed / Archive."Total Records")) / 2;
+                GlobalProgress := ((RecProceed / ArchTotalRecSize) + (RecProceed / Archive."Total Records")) / 2;
                 Win.Update(4, PipouMgt.ProgressBar(GlobalProgress));
-                Win.Update(5, Format(DataProceed) + ' / ' + Format(ArchTotalSize));
                 Win.Update(6, Format(RecProceed) + ' / ' + Format(Archive."Total Records"));
                 Win.Update(7, Format(Round(TotCompSize, 1)));
 
@@ -155,7 +160,7 @@ codeunit 51005 "TOO Pipou Export Data"
                 ElapsedTime := Round(CurrentDateTime - StartDT, 1000);
                 Win.Update(2, ElapsedTime);
                 // Estimate remaining (after 1% progress)
-                if (GlobalProgress >= 0.01) and (ArchTotalSize > 0) then begin
+                if (GlobalProgress >= 0.01) and (ArchTotalRecSize > 0) then begin
                     // multiply elapsed time by remaining % progression (if 25% = x3, 50% = x1, if 75% = x0.33)
                     RemProgress := (1 - GlobalProgress) / GlobalProgress;
                     // round by 10s
@@ -285,11 +290,11 @@ codeunit 51005 "TOO Pipou Export Data"
         FieldAllEmpty: array[500] of Boolean;
         FieldDataClassifed: array[500] of Boolean;
         I: Integer;
-        FullSizePerRec: Decimal;
         FieldsCount: Integer;
         EnableColStore: Boolean;
         UnCheckedPos: Integer;
         TableRecPos: Integer;
+        FieldRefArr: array[500] of FieldRef;
     begin
         // Ignore export of it self
         if Table."Table ID" IN [Database::"TOO Pipou Archive Files", Database::"TOO Pipou Archive", database::"TOO Pipou Import Log"] then
@@ -303,7 +308,6 @@ codeunit 51005 "TOO Pipou Export Data"
             Table."No. of Records" := RecRef.Count(); // overide number of rec counted
         end;
         if Table."No. of Records" = 0 then exit;
-        FullSizePerRec := Table."Original Data Size (KB)" / Table."No. of Records";
 
         // Enable transposition on 100+ records
         if Archive."Enable Columns Transcoding" then
@@ -343,6 +347,9 @@ codeunit 51005 "TOO Pipou Export Data"
 
         #region Export Records
         if RecRef.FindSet(false) then begin
+            // Pre-cache field references and encode flag for hot path
+            for I := 1 to FieldsCount do
+                FieldRefArr[I] := RecRef.Field(FieldIDList[I]);
             // Create First file chunk
             TableChunkNo := 1;
             CreateChunk(Archive, EnableColStore, Table, TableChunkNo, 0, FieldsCount);
@@ -353,7 +360,6 @@ codeunit 51005 "TOO Pipou Export Data"
                         if (UnCheckedPos >= 1000) then begin
                             TableRecPos += UnCheckedPos;
                             ThreadRecProceed += UnCheckedPos;
-                            ThreadSizeKBProceed += FullSizePerRec * (UnCheckedPos);
                             UnCheckedPos := 0;
 
                             // Thread progression (Time based)
@@ -370,18 +376,11 @@ codeunit 51005 "TOO Pipou Export Data"
                         end;
 
                         // Fields
-                        if Archive."Enable Optimal Encode" then begin
-                            for I := 1 to FieldsCount do
-                                if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(RecRef.Field(FieldIDList[I]), ColumnOutStrArr[I], true)
-                                else
-                                    PipouMgt.WriteFieldOptBinaryData(ColumnOutStrArr[I], FieldAllEmpty[I], RecRef.Field(FieldIDList[I]));
-                        end else
-                            for I := 1 to FieldsCount do
-                                if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(RecRef.Field(FieldIDList[I]), ColumnOutStrArr[I], false)
-                                else
-                                    PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldAllEmpty[I], RecRef.Field(FieldIDList[I]));
+                        for I := 1 to FieldsCount do
+                            if FieldDataClassifed[I] then
+                                PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ColumnOutStrArr[I])
+                            else
+                                PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldAllEmpty[I], FieldRefArr[I]);
 
                         UnCheckedPos += 1;
                     until RecRef.Next() = 0;
@@ -391,7 +390,6 @@ codeunit 51005 "TOO Pipou Export Data"
                         if (UnCheckedPos >= 1000) then begin
                             TableRecPos += UnCheckedPos;
                             ThreadRecProceed += UnCheckedPos;
-                            ThreadSizeKBProceed += FullSizePerRec * (UnCheckedPos);
                             UnCheckedPos := 0;
 
                             // Thread progression (Time based)
@@ -408,25 +406,17 @@ codeunit 51005 "TOO Pipou Export Data"
                         end;
 
                         // Fields
-                        if Archive."Enable Optimal Encode" then begin
-                            for I := 1 to FieldsCount do
-                                if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(RecRef.Field(FieldIDList[I]), ChunkOutStr, true)
-                                else
-                                    PipouMgt.WriteFieldOptBinaryData(ChunkOutStr, FieldAllEmpty[I], RecRef.Field(FieldIDList[I]));
-                        end else
-                            for I := 1 to FieldsCount do
-                                if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(RecRef.Field(FieldIDList[I]), ChunkOutStr, false)
-                                else
-                                    PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldAllEmpty[I], RecRef.Field(FieldIDList[I]));
+                        for I := 1 to FieldsCount do
+                            if FieldDataClassifed[I] then
+                                PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ChunkOutStr)
+                            else
+                                PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldAllEmpty[I], FieldRefArr[I]);
 
                         UnCheckedPos += 1;
                     until RecRef.Next() = 0;
             end;
             TableRecPos += UnCheckedPos;
             ThreadRecProceed += UnCheckedPos;
-            ThreadSizeKBProceed += FullSizePerRec * (UnCheckedPos);
             #endregion
 
             // close last chunk
@@ -440,7 +430,6 @@ codeunit 51005 "TOO Pipou Export Data"
         Thread.Status := Thread.Status::"Exporting Data";
         Thread."Current Table" := CurrTableName;
         Thread."Current Table Progress %" := CurrTableProgg;
-        Thread."Proceed Size KB" := Round(ThreadSizeKBProceed, 1, '<');
         Thread."Total Rec. Proceed" := ProceedRecs;
         Thread.Modify();
         Commit();
@@ -500,7 +489,6 @@ codeunit 51005 "TOO Pipou Export Data"
     begin
         // Update thread status
         Thread."Current Table Progress %" := 100;
-        Thread."Proceed Size KB" := Round(ThreadSizeKBProceed, 1, '<');
         Thread."Total Rec. Proceed" := ThreadRecProceed;
         Thread.Status := Thread.Status::"Compressing - Storing";
         Thread.Modify();
@@ -616,10 +604,10 @@ codeunit 51005 "TOO Pipou Export Data"
                 else
 #if ONPREM
                     // Auto (On-Premise) : 
-                    if InStr.Length() < 1024 * 1024 then
-                        // 1 KB - 1 MB : zStd (better for small size)
+                    if InStr.Length() < 256 * 1024 then
+                        // 1 KB - 256 KB : zStd (faster for small size, avoid exe and IO overhead)
                         exit(CompressionMode::zStandard)
-                    else // Above >1 MB : libbsc (better for larger files)
+                    else // Above >1 MB : Libbsc
                         if IsLibbscAvailable() then
                             exit(CompressionMode::libbsc)
                         else
@@ -629,6 +617,7 @@ codeunit 51005 "TOO Pipou Export Data"
 #endif
     end;
 
+#if ONPREM
     local procedure IsLibbscAvailable(): Boolean
     var
         BscPath: Text;
@@ -643,6 +632,22 @@ codeunit 51005 "TOO Pipou Export Data"
             else
                 exit(false);
     end;
+
+    local procedure IsMCMXAvailable(): Boolean
+    var
+        BscPath: Text;
+    begin
+        BscPath := System.ApplicationPath();
+        BscPath += 'Add-ins\mcmx.exe';
+        if Exists(BscPath) then
+            exit(true)
+        else
+            if Exists(System.ApplicationPath() + 'mcmx.exe') then
+                exit(true)
+            else
+                exit(false);
+    end;
+#endif
     #endregion
 
 
@@ -667,7 +672,6 @@ codeunit 51005 "TOO Pipou Export Data"
         PipouMgt: Codeunit "TOO Pipou Mgt.";
         ThreadHelper: Codeunit "TOO Pipou Threads Mgt.";
         ChunkOutStr: OutStream;
-        ThreadSizeKBProceed: Decimal;
         ThreadRecProceed: Integer;
         ArchiveFile: Record "TOO Pipou Archive Files";
         TableChunkNo: Integer;

@@ -18,7 +18,6 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         NoColumns: Integer;
         RowColumns: Integer;
         PIpouBlog: codeunit "TOO Pipou Blob Mgt.";
-        ZigZag: Codeunit "TOO Optimal Bin. Encoding";
         EvalDataText: Text;
         EvalDateFormula: DateFormula;
         EvalRecID: RecordId;
@@ -40,16 +39,20 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         ConnectionString := GetSqlConnectionString();
     end;
 
-#region Open
+    #region Open
     procedure Open(OpenTableID: Integer; FromCompanyName: Text)
     var
         SourceTableName: Text;
         Fields: Record Field;
         PublishedApp: Record "Published Application";
+        AllObj: Record AllObj;
+        TableOriginalApp: Record "Published Application";
     begin
         SQLBulkmporterHelper := SQLBulkmporterHelper.BulkImporterExt();
         RowOpened := false;
         TableMeta.Get(OpenTableID);
+        AllObj.get(AllObj."Object type"::Table, OpenTableID);
+        TableOriginalApp.Get(AllObj."App Runtime Package ID");
         SQLFilter := '';
         SQLSelect := '';
         TableCompanyName := FromCompanyName;
@@ -60,20 +63,22 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
         // Get SQL Table Name
         SourceTableName := EscapeSQLChar(TableMeta.Name);
-        BaseTableSQLName := StrSubstNo('%1$%2$%3', TableCompanyName, SourceTableName, DELCHR(TableMeta."App ID", '=', '{}'));
+        if TableMeta.DataPerCompany then
+            BaseTableSQLName := StrSubstNo('%1$%2$%3', TableCompanyName, SourceTableName, DELCHR(TableOriginalApp."ID", '=', '{}').ToLower())
+        else
+            BaseTableSQLName := StrSubstNo('%1$%2', SourceTableName, DELCHR(TableOriginalApp."ID", '=', '{}').ToLower());
         ExtTableSQLName := BaseTableSQLName + '$ext';
 
         // Get list of fields stored in extension table
         Fields.SetLoadFields("No.", "App Runtime Package ID");
         Fields.SetRange(TableNo, OpenTableID);
         Fields.SetRange(Class, Fields.Class::Normal);
-        Fields.SetRange(ExternalName, '');
         Fields.SetFilter("App Runtime Package ID", '<>%1', EmptyGuid);
         if Fields.FindSet() then
             repeat
                 // Check that the field is from different App ID than base table (tableextension in the same project are stored in base table)
                 PublishedApp.SetLoadFields(ID);
-                PublishedApp.SetFilter(ID, '<>%1', TableMeta."App ID");
+                PublishedApp.SetFilter(ID, '<>%1', TableOriginalApp."ID");
                 PublishedApp.SetRange("Runtime Package ID", Fields."App Runtime Package ID");
                 PublishedApp.SetRange(Installed, true);
                 if PublishedApp.FindFirst() then begin
@@ -84,9 +89,9 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
         BeginRow(); // prepare first row
     end;
-#endregion
+    #endregion
 
-#region Column
+    #region Column
     procedure AddBulkColumn(FieldRef: FieldRef; IsPartOfPK: Boolean)
     var
         Type: Text;
@@ -149,16 +154,16 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         SQLBulkmporterHelper.AddColumn('$systemModifiedAt', 'DateTime');
         SQLBulkmporterHelper.AddColumn('$systemModifiedBy', 'GUID');
     end;
-#endregion
+    #endregion
 
-#region Add BIN Value
+    #region Add BIN Value
     local procedure AddBulkBlobValueFromBin(var InStr: InStream; ColumnZeroBaseIndex: Integer)
     var
         Length: Integer;
         TempBlob: Codeunit "Temp Blob";
         OutStr: OutStream;
-        BlobBytes: DotNet System.Array;
-        DotNetType: DotNet System.Type;
+        BlobBytes: DotNet Array; // System.Array
+        DotNetType: DotNet Type; // System.Type
         MemoryStream: DotNet MemoryStream;
         BlobInStr: InStream;
     begin
@@ -338,7 +343,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         OutStr.Write(Hi);
     end;
 
-    procedure AddBulkValueFromBin(var FieldType: enum "TOO Fields Types"; var FieldLen: Integer; var InStr: InStream; OptimalEncode: Boolean)
+    procedure AddBulkValueFromBin(var FieldType: enum "TOO Fields Types"; var FieldLen: Integer; var InStr: InStream)
     begin
         case FieldType of
             FieldType::BLOB:
@@ -380,10 +385,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
             FieldType::Duration:
                 begin
-                    if OptimalEncode then begin
-                        ZigZag.ReadBigInt(InStr, EvalBigInt);
-                    end else
-                        InStr.Read(EvalBigInt);
+                    InStr.Read(EvalBigInt);
                     SQLBulkmporterHelper.AddRowValue(EvalBigInt, RowColumns);
                 end;
 
@@ -398,14 +400,11 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
             FieldType::Date:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDate(InStr, EvalDate)
-                    else
-                        InStr.Read(EvalDate);
+                    InStr.Read(EvalDate);
                     if EvalDate = 0D then
                         SQLBulkmporterHelper.AddRowValueALDate(0, 0, 0, RowColumns)
                     else begin
-                        SQLBulkmporterHelper.AddRowValueALDate(EvalDate.Year, EvalDate.Month, EvalDate.Day, RowColumns);
+                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns);
                     end;
                 end;
 
@@ -420,10 +419,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
             FieldType::DateTime:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDateTime(InStr, EvalDateTime)
-                    else
-                        InStr.Read(EvalDateTime);
+                    InStr.Read(EvalDateTime);
                     SQLBulkmporterHelper.AddRowValue(EvalDateTime, RowColumns);
                 end;
 
@@ -435,29 +431,20 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
             FieldType::Decimal:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDecimal(InStr, EvalDec)
-                    else
-                        InStr.Read(EvalDec);
+                    InStr.Read(EvalDec);
                     SQLBulkmporterHelper.AddRowValue(EvalDec, RowColumns);
                 end;
 
             FieldType::Option,
             FieldType::Integer:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadInt(InStr, EvalInt)
-                    else
-                        InStr.Read(EvalInt);
+                    InStr.Read(EvalInt);
                     SQLBulkmporterHelper.AddRowValue(EvalInt, RowColumns);
                 end;
 
             FieldType::BigInteger:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadBigInt(InStr, EvalBigInt)
-                    else
-                        InStr.Read(EvalBigInt);
+                    InStr.Read(EvalBigInt);
                     SQLBulkmporterHelper.AddRowValue(EvalBigInt, RowColumns);
                 end;
             else
@@ -465,9 +452,9 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         end;
         RowColumns += 1;
     end;
-#endregion
+    #endregion
 
-#region Add FIELD Value
+    #region Add FIELD Value
     procedure AddBulkRowValue(FieldValue: FieldRef; IsPartOfPK: Boolean)
     var
         VariantVal: Variant;
@@ -483,7 +470,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
                     if EvalDate = 0D then
                         SQLBulkmporterHelper.AddRowValueALDate(0, 0, 0, RowColumns)
                     else begin
-                        SQLBulkmporterHelper.AddRowValueALDate(EvalDate.Year, EvalDate.Month, EvalDate.Day, RowColumns);
+                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns);
                     end;
                 end;
             FieldValue.Type::DateTime:
@@ -517,7 +504,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         end;
         RowColumns += 1;
     end;
-#endregion
+    #endregion
 
     procedure AddBulkRowValueAudit(CreatedAt: DateTime; CreatedBy: Guid; ModifiedAt: DateTime; ModifiedBy: Guid)
     begin
@@ -528,7 +515,7 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         SQLBulkmporterHelper.AddRowValue(ModifiedBy, RowColumns + 3);
     end;
 
-#region Insert Row
+    #region Insert Row
     procedure Insert()
     var
         ErrColMisMatch: Label 'The number of values passed is different than the column definition.';
@@ -541,16 +528,16 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
         BeginRow(); // prepare next row if any
     end;
 
-#region Send Bulk
+    #region Send Bulk
     [TryFunction]
     procedure CommitBulkInserts()
     begin
         SQLBulkmporterHelper.WriteToServer(GetSqlConnectionString(), BaseTableSQLName);
     end;
-#endregion
-#endregion
+    #endregion
+    #endregion
 
-#region internal
+    #region internal
     local procedure BeginRow()
     begin
         if not RowOpened then begin
@@ -577,8 +564,10 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
     var
         Sqlhelper: Codeunit "TOO SQL Helper FindSet";
     begin
-        exit(Sqlhelper.GetSqlConnectionString(true));
+        if ConnectionString = '' then
+            ConnectionString := Sqlhelper.GetSqlConnectionString(true);
+        exit(ConnectionString);
     end;
-#endregion
+    #endregion
 }
 #endif

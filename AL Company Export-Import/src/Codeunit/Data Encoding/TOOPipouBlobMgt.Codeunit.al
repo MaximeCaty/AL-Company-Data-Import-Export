@@ -78,19 +78,18 @@ codeunit 51006 "TOO Pipou Blob Mgt."
             InStr.Read(MediaSetGuid);
             for I := 1 to MediaCount do begin
                 InStr.Read(MediaIndex);
-                if ImportMediaBinary(MediaGuid, InStr) then begin
-                    TenantMediaSet.Init();
-                    TenantMediaSet.ID := MediaSetGUID;
-                    Evaluate(TenantMediaSet."Media ID", MediaGUID);
-                    TenantMediaSet."Media Index" := MediaIndex;
-                    if not TenantMediaSet.Insert(false) then
-                        TenantMediaSet.Modify();
-                end;
+                ImportMediaBinary(MediaGuid, InStr);
+                TenantMediaSet.Init();
+                TenantMediaSet.ID := MediaSetGUID;
+                Evaluate(TenantMediaSet."Media ID", MediaGUID);
+                TenantMediaSet."Media Index" := MediaIndex;
+                if not TenantMediaSet.Insert(false) then
+                    TenantMediaSet.Modify();
             end;
         end;
     end;
 
-    procedure ImportMediaBinary(var MediaGuid: Guid; var InStr: InStream): Boolean
+    procedure ImportMediaBinary(var MediaGuid: Guid; var InStr: InStream)
     var
         OutStr: OutStream;
         TenantMedia: Record "Tenant Media";
@@ -131,10 +130,11 @@ codeunit 51006 "TOO Pipou Blob Mgt."
         if TenantMediaSet.IsEmpty() then
             OutStr.Write(0)
         else begin
-            // number of medias
+            // Number of medias
             OutStr.Write(TenantMediaSet.Count());
-            // mediaset guid
+            // Mediaset guid
             OutStr.Write(TenantMediaSetGuid);
+            TenantMediaSet.FindSet();
             repeat
                 MediaId := TenantMediaSet."Media ID".MediaId;
                 OutStr.Write(TenantMediaSet."Media Index");
@@ -149,17 +149,22 @@ codeunit 51006 "TOO Pipou Blob Mgt."
         TenantMedia: Record "Tenant Media";
         BlobLen: Integer;
     begin
+        TenantMedia.SetAutoCalcFields(Content);
+        if not TenantMedia.Get(MediaId) then begin
+            OutStr.Write(0);
+            exit;
+        end;
+        //TenantMedia.CalcFields(Content);
         BlobLen := TenantMedia.Content.Length;
-        if not TenantMedia.Get(MediaId) or (BlobLen = 0) then
-            OutStr.Write(0) // blob length = 0
+        if BlobLen = 0 then
+            OutStr.Write(0)
         else begin
-            TenantMedia.CalcFields(Content);
             OutStr.Write(BlobLen);
             OutStr.Write(TenantMedia.ID);
-            OutStr.WriteText(TenantMedia."Mime Type");
+            OutStr.Write(TenantMedia."Mime Type");
             OutStr.Write(TenantMedia.Width);
             OutStr.Write(TenantMedia.Height);
-            OutStr.WriteText(TenantMedia.Description);
+            OutStr.Write(TenantMedia.Description);
             TenantMedia.Content.CreateInStream(BlobInStr);
             CopyStream(OutStr, BlobInStr);
         end;

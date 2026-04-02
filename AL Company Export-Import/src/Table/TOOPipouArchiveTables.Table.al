@@ -30,22 +30,6 @@ table 51007 "TOO Pipou Archive Tables"
         {
             DataClassification = SystemMetadata;
         }
-        field(50; "Record Size"; Decimal)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(60; "Original SQL Data+Index (KB)"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(70; "Original Data Size (KB)"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(80; "Original Index Size (KB)"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
         field(90; "Table DataClassification"; Integer)
         {
 
@@ -58,11 +42,9 @@ table 51007 "TOO Pipou Archive Tables"
         }
         field(900; "Select For Import"; Boolean)
         {
-            ToolTip = 'Indicate if the table has been selected for next import oepration.';
         }
         field(910; "Import Completed"; Boolean)
         {
-            ToolTip = 'Indicate if the table has been completly imported.';
             FieldClass = FlowField;
             CalcFormula = - exist("TOO Pipou Archive Files" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID"), Imported = const(false)));
         }
@@ -107,6 +89,12 @@ table 51007 "TOO Pipou Archive Tables"
         {
             DataClassification = SystemMetadata;
         }
+        field(3000; "Rem. Rec. To Import"; Integer)
+        {
+            Editable = false;
+            FieldClass = FlowField;
+            CalcFormula = sum("TOO Pipou Archive Files"."Number Of Recs" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID"), Imported = Const(false)));
+        }
     }
 
     keys
@@ -114,10 +102,6 @@ table 51007 "TOO Pipou Archive Tables"
         key(Key1; "Archive ID", "Table ID")
         {
             Clustered = true;
-        }
-        key(SortSize; "Archive ID", "Original SQL Data+Index (KB)")
-        {
-
         }
     }
 

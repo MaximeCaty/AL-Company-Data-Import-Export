@@ -12,20 +12,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
     {
         area(Content)
         {
-            // *** Top Banner ***
-            group(StandardBanner)
-            {
-                Caption = '', Locked = true;
-                Editable = false;
-                ShowCaption = false;
-                Visible = not FinishEnable;
-
-                field(MediaResourcesStandard; MediaResourcesStandard."Media Reference")
-                {
-                    Editable = false;
-                    ShowCaption = false;
-                }
-            }
             #region Step 1 Intro
             group(Step1)
             {
@@ -36,12 +22,12 @@ page 51018 "TOO Pipou Import Asst. Setup"
                 group(Group10)
                 {
                     Caption = 'Let''s Go', Comment = 'C''est parti';
-                    InstructionalText = 'Welcome to the Pipou Company data import wizard. Fill in the informations at each step until you see the “Start Import” button.', Comment = 'Bienvenue dans l''assistant d''import de données sociétés. Remplissez les informations à chaque étape jusqu''à voir le bouton "Lancer l''import".';
+                    InstructionalText = 'Welcome to the Company data import wizard. Fill in the informations at each step until you see the “Start Import” button.';
                 }
                 group(Group11)
                 {
                     Caption = '', Locked = true;
-                    InstructionalText = 'The export process will start once you press the button in last step.', Comment = 'Le processus d''import débutera après avoir cliquer sur le bouton en dermière étape.';
+                    InstructionalText = 'The import process will start once you press the button in last step.';
                 }
                 group(Group12)
                 {
@@ -54,8 +40,8 @@ page 51018 "TOO Pipou Import Asst. Setup"
             #region Step2 File
             group(Step2)
             {
-                Caption = 'Archive File', Comment = 'Choix du fichier à importer';
-                InstructionalText = 'Specify the archive file to import from.', Comment = 'Spécifier le fichier à importer.';
+                Caption = 'Archive File';
+                InstructionalText = 'Specify the archive file to import from.';
                 Visible = Step2Visible;
 
                 field(UploadNewfile; UploadNewFileLbl)
@@ -87,7 +73,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
                     ApplicationArea = All;
                     ShowMandatory = true;
                     NotBlank = true;
-                    TableRelation = "TOO Pipou Archive"."Archive Name" where("Process Status" = Filter(" " | "⌛ Partially Imported"));
+                    TableRelation = "TOO Pipou Archive"."Archive Name" where("Process Status" = Filter(" " | "✅ Partially Imported"));
 
                     trigger OnValidate()
                     var
@@ -113,7 +99,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
                                 Logs.DeleteAll();
                             end;
                         if Rec."Number of Threads" = 0 then begin
-                            Rec."Number of Threads" := 4;
+                            Rec."Number of Threads" := 2;
                             rec.Modify();
                         end;
                     end;
@@ -156,14 +142,15 @@ page 51018 "TOO Pipou Import Asst. Setup"
                     ToolTip = 'Clean any existing table data before importing. The import will fail if any inserted record already exists, leave it to true unless you are importing a differential data file.';
                 }
 
+#if ONPREM
                 group(ImportDataAcessGroup)
                 {
                     Caption = '', Locked = true;
-                    InstructionalText = 'Select the method to import data.', Comment = 'Choix de methode d''import.';
+                    InstructionalText = 'Select the method to import data.';
 
                     field(ImportMethod; ImportMethod)
                     {
-                        Caption = 'Database Access', Comment = 'Acces a la base de donnees.';
+                        Caption = 'Database Access';
                         ApplicationArea = All;
                         ToolTip = 'Specify the method used to import the datas. For OnPremise instance, SQLBulkCopy is 4-5x faster and bypass any Business Central events and trigger, and can also import audit fields.';
 
@@ -183,6 +170,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
                         end;
                     }
                 }
+#endif
 
                 group(Info)
                 {
@@ -223,11 +211,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
 
                         }
                         field("Total Records"; Format(Rec."Total Records", 0, '<Sign><Integer Thousand><1000Character, >'))
-                        {
-                            ApplicationArea = all;
-                            Editable = false;
-                        }
-                        field("Total Size (KB)"; Format(Rec."Total Original Data Size (KB)", 0, '<Sign><Integer Thousand><1000Character, >'))
                         {
                             ApplicationArea = all;
                             Editable = false;
@@ -283,11 +266,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
                         Caption = 'Tables Selected', Comment = 'Nb. Tables sélectionnées';
                         Editable = false;
                     }
-                    field(CompanyTotalDataSize2; Format(CompanyTotalDataSize, 0, '<Sign><Integer Thousand><1000Character, >') + ' KB')
-                    {
-                        Caption = 'Total Selected Size', Comment = 'Poids données à importer';
-                        Editable = false;
-                    }
                 }
                 group(Group52)
                 {
@@ -303,21 +281,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
                 }
             }
             #endregion
-
-            // *** Finish banner ***
-            group(FinishedBanner)
-            {
-                Caption = '', Locked = true;
-                Editable = false;
-                ShowCaption = false;
-                Visible = Step5Visible;
-
-                field(MediaResourcesDone; MediaResourcesDone."Media Reference")
-                {
-                    Editable = false;
-                    ShowCaption = false;
-                }
-            }
         }
     }
 
@@ -365,25 +328,41 @@ page 51018 "TOO Pipou Import Asst. Setup"
     }
     #endregion
 
+    procedure SetOpenAtStep(AtStep: Integer)
+    begin
+        OpenAtStep := AtStep;
+        Step := OpenAtStep;
+        EnableControls();
+    end;
+
     trigger OnInit()
     begin
-        LoadBanners();
-        Step := 1;
+        if OpenAtStep > 0 then
+            Step := OpenAtStep
+        else
+            Step := 1;
         EnableControls();
     end;
 
     trigger OnOpenPage()
     var
+        Mgt: codeunit "TOO Pipou Mgt.";
         ThreadMgt: codeunit "TOO Pipou Threads Mgt.";
+        WriteInsideTryFunctionEnabled: Codeunit "TOO WriteInsideTryEnabled";
+        WriteInTryMusTBeEnabled: Label 'The service instance does not allow transaction inside TryFunction, this must be enabled to run this process.\Use Business Central Administration Shell to set this configuration :\Powershell:\Set-NavServerConfiguration InstanceName -KeyName DisableWriteInsideTryFunctions -KeyValue false\Restarting Business Central service is required after this change.';
     begin
+#if not ONPREM
+        if not WriteInsideTryFunctionEnabled.Run() then
+            Error(WriteInTryMusTBeEnabled);
         ThreadMgt.CheckThreadsRunning();
-        if (Rec."Archive Name" <> '') then begin
+#endif
+        if (Rec."Archive Name" <> '') then
             ArchiveName := rec."Archive Name";
-            Step := 2; // skip introduction if a record is passed
-        end;
         EnableControls();
 #if ONPREM
-        ImportMethod := ImportMethod::"DotNet SqlBulkCopy";
+        // Version < 23 not supported for SQL Bulk, has different tablextension schema
+        if Mgt.GetMajorBCVersion() >= 23 then
+            ImportMethod := ImportMethod::"DotNet SqlBulkCopy";
 #endif
     end;
 
@@ -422,11 +401,9 @@ page 51018 "TOO Pipou Import Asst. Setup"
         ArchiveTables.SetRange("Archive ID", Rec."Archive ID");
         ArchiveTables.SetRange("Select For Import", true);
         CompanyTotalTables := ArchiveTables.Count();
-        CompanyTotalDataSize := 0;
         CompanyTotalRecords := 0;
         if ArchiveTables.FindSet() then
             repeat
-                CompanyTotalDataSize += ArchiveTables."Original Data Size (KB)";
                 CompanyTotalRecords += ArchiveTables."No. of Records";
             until ArchiveTables.Next() = 0;
 
@@ -477,20 +454,20 @@ page 51018 "TOO Pipou Import Asst. Setup"
         Rec."Import Use SQL Bulk" := (ImportMethod = ImportMethod::"DotNet SqlBulkCopy");
         Rec.Modify();
 
-        if not Confirm(RunBackgroundLbl) then begin
-            StartDT := CurrentDateTime;
-            Import.MultiThreadImport(Rec, true);
-            Logs.SetRange("Archive ID", Rec."Archive ID");
-            Logs.SetFilter(SystemCreatedAt, '>=%1', StartDT);
-            Logs.SetRange(Status, Logs.Status::Warning);
-            WarnCount := Logs.Count();
-            Logs.SetRange(Status, Logs.Status::Error);
-            ErrCount := Logs.Count();
-            Logs.SetRange(Status);
-            SelectLatestVersion(); // clear instance cache to force SQL table re-read
-            if Confirm(StrSubstNo(ImportFinishedLbl, CurrentDateTime - StartDT, WarnCount, ErrCount)) then
-                Page.Run(Page::"TOO Pipou Import Logs", Logs);
-        end else begin
+        //if not Confirm(RunBackgroundLbl) then begin
+        StartDT := CurrentDateTime;
+        Import.MultiThreadImport(Rec, true);
+        Logs.SetRange("Archive ID", Rec."Archive ID");
+        Logs.SetFilter(SystemCreatedAt, '>=%1', StartDT);
+        Logs.SetRange(Status, Logs.Status::Warning);
+        WarnCount := Logs.Count();
+        Logs.SetRange(Status, Logs.Status::Error);
+        ErrCount := Logs.Count();
+        Logs.SetRange(Status);
+        SelectLatestVersion(); // clear instance cache to force SQL table re-read
+        if Confirm(StrSubstNo(ImportFinishedLbl, CurrentDateTime - StartDT, WarnCount, ErrCount)) then
+            Page.Run(Page::"TOO Pipou Import Logs", Logs);
+        /*end else begin
             // Start Job Queue
             JobQueueEntry.ID := CreateGuid();
             JobQueueEntry."Object Type to Run" := JobQueueEntry."Object Type to Run"::Codeunit;
@@ -511,7 +488,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
             Rec.Get(Rec."Archive Name", Rec."Archive ID");
             Page.Run(Page::"TOO Pipou Archive Card", Rec);
             CurrPage.Close();
-        end;
+        end;*/
     end;
     #endregion
 
@@ -544,22 +521,9 @@ page 51018 "TOO Pipou Import Asst. Setup"
         FinishEnable := false;
     end;
 
-    local procedure LoadBanners()
-    var
-        MediaRepositoryDone: Record "Media Repository";
-        MediaRepositoryStandard: Record "Media Repository";
-    begin
-        if MediaRepositoryStandard.Get('AssistedSetup-NoText-400px.png', Format(CurrentClientType())) and
-            MediaRepositoryDone.Get('AssistedSetupDone-NoText-400px.png', Format(CurrentClientType()))
-        then
-            if MediaResourcesStandard.Get(MediaRepositoryStandard."Media Resources Ref") and MediaResourcesDone.Get(MediaRepositoryDone."Media Resources Ref") then;
-    end;
-
     var
         ImportMethod: Option "AL Record.Insert","DotNet SqlBulkCopy";
         ArchiveName: Text;
-        MediaResourcesDone: Record "Media Resources";
-        MediaResourcesStandard: Record "Media Resources";
         BackEnable: Boolean;
         FinishEnable: Boolean;
         NextEnable: Boolean;
@@ -569,7 +533,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
         Step4Visible: Boolean;
         Step5Visible: Boolean;
         Step: Integer;
-        CompanyTotalDataSize: Integer;
+        OpenAtStep: Integer;
         CompanyTotalTables: Integer;
         CompanyTotalRecords: Integer;
         UploadNewFileLbl: Label 'Upload a new file';

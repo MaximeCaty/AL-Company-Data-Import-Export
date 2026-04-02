@@ -21,7 +21,8 @@ codeunit 51004 "TOO Pipou Mgt."
      tabledata "Bank Account Statement Line" = rimd, tabledata "Change Log Entry" = rimd, tabledata "Posted Approval Entry" = rimd, tabledata "FA Register" = rimd, tabledata "Post Value Entry to G/L" = rimd,
      tabledata "Job Register" = rimd, tabledata "Reminder/Fin. Charge Entry" = rmid, tabledata "Posted Approval Comment Line" = rmid, tabledata "Dimension Set Tree Node" = rmid, tabledata "Cancelled Document" = rmid;
 
-    procedure Initialize(BlobMaxSize: Integer; ClassifiedDataExportHandling: Option "Keep","Empty","Randomize")
+
+    procedure Initialize(SetBlobMaxSize: Integer; ClassifiedDataExportHandling: Option "Keep","Empty","Randomize")
     var
         typehelp: Codeunit "Type Helper";
     begin
@@ -29,8 +30,7 @@ codeunit 51004 "TOO Pipou Mgt."
         OneByte := 1;
         LF := typehelp.LFSeparator();
         Logentry := 0;
-        this.BlobMaxSize := BlobMaxSize;
-        ZigZag.Initialize();
+        BlobMaxSize := SetBlobMaxSize;
         ClassifiedDataHandling := ClassifiedDataExportHandling;
         AllALTypes.Open(Database::"TOO All Types");
         DefTextFieldRef := AllALTypes.Field(10);
@@ -46,6 +46,22 @@ codeunit 51004 "TOO Pipou Mgt."
         DefDateFormulaFieldRef := AllALTypes.Field(20);
     end;
 
+    procedure GetMajorBCVersion(): Integer
+    var
+        AppSysConstants: Codeunit "Application System Constants";
+        VersionText: Text;
+        Major: Integer;
+        DotPos: Integer;
+    begin
+        VersionText := AppSysConstants.ApplicationVersion();
+        DotPos := StrPos(VersionText, '.');
+        if DotPos > 1 then
+            if Evaluate(Major, CopyStr(VersionText, 1, DotPos - 1)) then
+                exit(Major);
+
+        exit(0); // fallback
+    end;
+
     #region ProgressBar
     procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
     var
@@ -57,18 +73,9 @@ codeunit 51004 "TOO Pipou Mgt."
             if i < ProgressChar then
                 AsciiResult += '▰'
             else
-                if i = ProgressChar then begin
-                    case (((CurrentDateTime().Time().Second * 2) + (round(CurrentDateTime().Time().Millisecond / 1000, 1))) mod 4) of
-                        0:
-                            AsciiResult += '▴';
-                        1:
-                            AsciiResult += '◂';
-                        2:
-                            AsciiResult += '▾';
-                        3:
-                            AsciiResult += '▸';
-                    end;
-                end else
+                if i = ProgressChar then
+                    AsciiResult += '▴'
+                else
                     AsciiResult += '▱';
             if i = 12 then // half of 25
                 AsciiResult += Format(Round(ProgressPercent * 100, 1)).PadLeft(2, '0') + '%';
@@ -158,7 +165,7 @@ codeunit 51004 "TOO Pipou Mgt."
         RecRef.Insert(false);
     end;
 
-    #region Export BINARY
+    #region Write Bin
     procedure WriteFieldBinaryData(var OutStr: OutStream; var FieldIsEmpty: Boolean; FieldRef: FieldRef)
     begin
         case FieldRef.Type of
@@ -266,117 +273,10 @@ codeunit 51004 "TOO Pipou Mgt."
                         Error('Field type unsupported for binary writting : %1', FieldRef.Type); // Unknown data type ?
         end;
     end;
+    #endregion
 
-    procedure WriteFieldOptBinaryData(var OutStr: OutStream; var FieldIsEmpty: Boolean; FieldRef: FieldRef)
-    begin
-        case FieldRef.Type of
-
-            FieldRef.Type::BLOB:
-                begin
-                    if BlobMgt.ExportBlobFieldBinary(FieldRef, OutStr, BlobMaxSize) > 0 then
-                        FieldIsEmpty := false;
-                end;
-
-            FieldRef.Type::Media:
-                begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
-                    BlobMgt.ExportMediaFieldBinary(FieldRef.Value, OutStr);
-                end;
-
-            FieldRef.Type::MediaSet:
-                begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
-                    BlobMgt.ExportMediaSetFieldBinary(FieldRef.Value, OutStr);
-                end;
-
-            FieldRef.Type::Text:
-                begin
-                    if FieldRef.Value <> DefTextFieldRef.Value then FieldIsEmpty := false;
-                    OutStr.Write(FieldRef.Value);
-                end;
-
-            FieldRef.Type::Code:
-                begin
-                    if FieldRef.Value <> DefCodeFieldRef.Value then FieldIsEmpty := false;
-                    OutStr.Write(FieldRef.Value);
-                end;
-
-            FieldRef.Type::DateFormula:
-                begin
-                    if FieldRef.Value <> DefDateFormulaFieldRef.Value then FieldIsEmpty := false;
-                    OutStr.Write(format(FieldRef.Value, 0, 9));
-                end;
-
-            FieldRef.Type::RecordId:
-                begin
-                    if FieldRef.Value <> DefRecIDFieldRef.Value then FieldIsEmpty := false;
-                    OutStr.Write(format(FieldRef.Value, 0, 9));
-                end;
-
-            FieldRef.Type::Duration:
-                begin
-                    if FieldRef.Value <> DefDurFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteBigInt(OutStr, FieldRef.Value)
-                end;
-
-            FieldRef.Type::Time:
-                begin
-                    if FieldRef.Value <> DefTimeFieldRef.Value then FieldIsEmpty := false;
-                    OutStr.Write(FieldRef.Value)
-                end;
-
-            FieldRef.Type::Date:
-                begin
-                    if FieldRef.Value <> DefDateFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteDate(OutStr, FieldRef.Value)
-                end;
-
-            FieldRef.Type::DateTime:
-                begin
-                    if FieldRef.Value <> DefDateTimeFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteDateTime(OutStr, FieldRef.Value)
-                end;
-
-            FieldRef.Type::Boolean:
-                begin
-                    EvalBool := FieldRef.Value;
-                    if EvalBool then begin
-                        OutStr.Write(OneByte);
-                        FieldIsEmpty := false;
-                    end else
-                        OutStr.Write(ZeroByte);
-                end;
-
-            FieldRef.Type::Option,
-            FieldRef.Type::Integer:
-                begin
-                    if FieldRef.Value <> DefIntFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteInt(OutStr, FieldRef.Value)
-                end;
-
-            FieldRef.Type::BigInteger:
-                begin
-                    if FieldRef.Value <> DefBigIntFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteBigInt(OutStr, FieldRef.Value)
-                end;
-
-            FieldRef.Type::Decimal:
-                begin
-                    if FieldRef.Value <> DefDecFieldRef.Value then FieldIsEmpty := false;
-                    ZigZag.WriteDecimal(OutStr, FieldRef.Value)
-
-                end;
-
-            FieldRef.Type::Guid:
-                begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
-                    OutStr.Write(FieldRef.Value);
-                end else
-                        Error('Field type unsupported for binary writting : %1', FieldRef.Type); // Unknown data type ?
-        end;
-    end;
-
-    procedure WriteBinaryEmptyField(FieldRef: FieldRef; var OutStr: OutStream; OptimalEncode: Boolean)
+    #region Write Empty
+    procedure WriteBinaryEmptyField(FieldRef: FieldRef; var OutStr: OutStream)
     begin
         case FieldRef.Type of
             FieldRef.Type::Text,
@@ -392,45 +292,26 @@ codeunit 51004 "TOO Pipou Mgt."
 
             FieldRef.Type::Integer,
             FieldRef.Type::Option:
-                if OptimalEncode then
-                    OutStr.Write(ZeroByte)
-                else
-                    OutStr.Write(0);
+                OutStr.Write(0);
 
             FieldRef.Type::BigInteger,
             FieldRef.Type::Duration:
-                if OptimalEncode then
-                    ZigZag.WriteBigInt(OutStr, 0)
-                else
-                    OutStr.Write(0L);
+                OutStr.Write(0L);
 
             FieldRef.Type::Date:
-                if OptimalEncode then begin
-                    OutStr.Write(ZeroByte);
-                end else
-                    OutStr.Write(0);
+                OutStr.Write(0);
 
             FieldRef.Type::Time:
-                if OptimalEncode then
-                    OutStr.Write(ZeroByte)
-                else
-                    OutStr.Write(0);
+                OutStr.Write(0);
 
             FieldRef.Type::DateTime:
-                if OptimalEncode then begin
-                    OutStr.Write(ZeroByte);
-                    OutStr.Write(ZeroByte);
-                end else
-                    OutStr.Write(0L);
+                OutStr.Write(0L);
 
             FieldRef.Type::Boolean:
                 OutStr.Write(ZeroByte);
 
             FieldRef.Type::Decimal:
-                if OptimalEncode then
-                    ZigZag.WriteDecimal(OutStr, 0)
-                else
-                    OutStr.Write(EmptyDecimal); // 12 bits
+                OutStr.Write(EmptyDecimal); // 12 bits
 
             FieldRef.Type::Guid:
                 OutStr.Write(EmptyGuid); // 16 bits
@@ -439,37 +320,13 @@ codeunit 51004 "TOO Pipou Mgt."
                 Error('Field type %1 is not supported for empty binary writting', FieldRef.Type); // Unknown data type ?
         end;
     end;
-
     #endregion
 
-    #region Import BINARY
-    [TryFunction()]
-    procedure ApplyBinaryToBCField(var FieldRef: FieldRef; OptimalEncode: Boolean; var InStr: InStream)
-    begin
-        case FieldRef.Type of
-            FieldRef.Type::BLOB:
-                BlobMgt.ImportBlobBinData(FieldRef, InStr);
 
-            FieldRef.Type::Media:
-                begin
-                    BlobMgt.ImportMediaBinary(EvalGuid, InStr);
-                    FieldRef.Value := EvalGuid;
-                end;
 
-            FieldRef.Type::MediaSet:
-                begin
-                    BlobMgt.ImportMediaSetBinary(EvalGuid, InStr);
-                    FieldRef.Value := EvalGuid;
-                end;
-
-            else begin
-                EvaluateBinaryToBCField(FieldRef, OptimalEncode, InStr);
-            end;
-        end;
-    end;
-
+    #region Skip Bytes
     [TryFunction]
-    procedure SkipBinaryBytesBCField(FieldTypeAsInt: Integer; OptimalEncode: Boolean; var InStr: InStream)
+    procedure SkipBinaryBytesBCField(FieldTypeAsInt: Integer; var InStr: InStream)
     var
         Text: Text;
         MediaI: Integer;
@@ -520,25 +377,16 @@ codeunit 51004 "TOO Pipou Mgt."
                 InStr.Read(Text);
 
             "TOO Fields Types"::Duration:
-                if OptimalEncode then
-                    ZigZag.ReadBigInt(InStr, EvalBigInt)
-                else
-                    InStr.Position := Min(InStr.Position + 8, InStr.Length);
+                InStr.Position := Min(InStr.Position + 8, InStr.Length);
 
             "TOO Fields Types"::Date:
-                if OptimalEncode then
-                    ZigZag.ReadDate(InStr, EvalDate)
-                else
-                    InStr.Position := Min(InStr.Position + 4, InStr.Length);
+                InStr.Position := Min(InStr.Position + 4, InStr.Length);
 
             "TOO Fields Types"::Time:
                 InStr.Position := Min(InStr.Position + 4, InStr.Length);
 
             "TOO Fields Types"::DateTime:
-                if OptimalEncode then
-                    ZigZag.ReadDateTime(InStr, EvalDateTime)
-                else
-                    InStr.Position := Min(InStr.Position + 8, InStr.Length);
+                InStr.Position := Min(InStr.Position + 8, InStr.Length);
 
             // Fixed lengths skip :
             "TOO Fields Types"::Boolean:
@@ -548,68 +396,70 @@ codeunit 51004 "TOO Pipou Mgt."
                 InStr.Position := Min(InStr.Position + 16, InStr.Length);
 
             "TOO Fields Types"::Decimal:
-                if OptimalEncode then
-                    ZigZag.ReadDecimal(InStr, EvalDecimal)
-                else
-                    InStr.Position := Min(InStr.Position + 12, InStr.Length);
+                InStr.Position := Min(InStr.Position + 12, InStr.Length);
 
             "TOO Fields Types"::Option,
             "TOO Fields Types"::Integer:
-                if OptimalEncode then
-                    ZigZag.ReadInt(InStr, EvalInt)
-                else
-                    InStr.Position := Min(InStr.Position + 4, InStr.Length);
+                InStr.Position := Min(InStr.Position + 4, InStr.Length);
 
             "TOO Fields Types"::BigInteger:
-                if OptimalEncode then
-                    ZigZag.ReadBigInt(InStr, EvalBigInt)
-                else
-                    InStr.Position := Min(InStr.Position + 8, InStr.Length)
+                InStr.Position := Min(InStr.Position + 8, InStr.Length);
 
             // Unknown ???
             else
                 InStr.Read(Text);
         end;
     end;
+    #endregion
 
+    #region Parse Bin
     [TryFunction]
-    procedure EvaluateBinaryToBCField(var FieldRef: FieldRef; OptimalEncode: Boolean; var InStr: InStream)
-    var
-        DataValue: Text;
+    procedure EvaluateBinaryToBCField(var FieldRef: FieldRef; var InStr: InStream)
     begin
         case FieldRef.Type of
+
+            FieldRef.Type::BLOB:
+                BlobMgt.ImportBlobBinData(FieldRef, InStr);
+
+            FieldRef.Type::Media:
+                begin
+                    BlobMgt.ImportMediaBinary(EvalGuid, InStr);
+                    FieldRef.Value := EvalGuid;
+                end;
+
+            FieldRef.Type::MediaSet:
+                begin
+                    BlobMgt.ImportMediaSetBinary(EvalGuid, InStr);
+                    FieldRef.Value := EvalGuid;
+                end;
 
             FieldRef.Type::Text,
             FieldRef.Type::Code:
                 begin
-                    InStr.Read(DataValue);
-                    FieldRef.Value := copystr(DataValue, 1, FieldRef.Length);
+                    InStr.Read(TextData);
+                    FieldRef.Value := copystr(TextData, 1, FieldRef.Length);
                 end;
 
             FieldRef.Type::DateFormula:
                 begin
-                    InStr.Read(DataValue);
-                    if not DataValue.StartsWith('<') then
-                        Evaluate(EvalDateFormula, '<' + DataValue + '>')
+                    InStr.Read(TextData);
+                    if not TextData.StartsWith('<') then
+                        Evaluate(EvalDateFormula, '<' + TextData + '>')
                     else
-                        Evaluate(EvalDateFormula, DataValue);
+                        Evaluate(EvalDateFormula, TextData);
                     FieldRef.Value := EvalDateFormula;
                 end;
 
             FieldRef.Type::RecordId:
                 begin
-                    InStr.Read(DataValue);
-                    Evaluate(EvalRecID, DataValue.Replace('{', '').Replace('}', ''));
+                    InStr.Read(TextData);
+                    Evaluate(EvalRecID, TextData.Replace('{', '').Replace('}', ''));
                     FieldRef.Value := EvalRecID;
                 end;
 
             FieldRef.Type::Duration:
                 begin
-                    if OptimalEncode then begin
-                        ZigZag.ReadBigInt(InStr, EvalBigInt);
-                        EvalDuration := EvalBigInt;
-                    end else
-                        InStr.Read(EvalDuration);
+                    InStr.Read(EvalDuration);
                     FieldRef.Value := EvalDuration;
                 end;
 
@@ -622,10 +472,7 @@ codeunit 51004 "TOO Pipou Mgt."
 
             FieldRef.Type::Date:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDate(InStr, EvalDate)
-                    else
-                        InStr.Read(EvalDate);
+                    InStr.Read(EvalDate);
                     FieldRef.Value := EvalDate;
                 end;
 
@@ -637,20 +484,13 @@ codeunit 51004 "TOO Pipou Mgt."
 
             FieldRef.Type::DateTime:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDateTime(InStr, EvalDateTime)
-                    else
-                        InStr.Read(EvalDateTime);
+                    InStr.Read(EvalDateTime);
                     FieldRef.Value := EvalDateTime;
                 end;
 
             FieldRef.Type::Option:
                 begin
-                    if OptimalEncode then begin
-                        ZigZag.ReadInt(InStr, EvalInt);
-                        EvalOption := EvalInt;
-                    end else
-                        InStr.Read(EvalOption);
+                    InStr.Read(EvalOption);
                     FieldRef.Value := EvalOption;
                 end;
 
@@ -662,35 +502,26 @@ codeunit 51004 "TOO Pipou Mgt."
 
             FieldRef.Type::Decimal:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadDecimal(InStr, EvalDec)
-                    else
-                        InStr.Read(EvalDec);
+                    InStr.Read(EvalDec);
                     FieldRef.Value := EvalDec;
                 end;
 
             FieldRef.Type::Integer:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadInt(InStr, EvalInt)
-                    else
-                        InStr.Read(EvalInt);
+                    InStr.Read(EvalInt);
                     FieldRef.Value := EvalInt;
                 end;
 
             FieldRef.Type::BigInteger:
                 begin
-                    if OptimalEncode then
-                        ZigZag.ReadBigInt(InStr, EvalBigInt)
-                    else
-                        InStr.Read(EvalBigInt);
+                    InStr.Read(EvalBigInt);
                     FieldRef.Value := EvalBigInt;
                 end;
 
             // Unknown ???
             else begin
-                InStr.Read(DataValue);
-                FieldRef.Value := DataValue;
+                InStr.Read(TextData);
+                FieldRef.Value := TextData;
             end;
         end;
     end;
@@ -875,7 +706,6 @@ codeunit 51004 "TOO Pipou Mgt."
     var
         ClassifiedDataHandling: Option "Keep","Empty","Randomize";
         BlobMgt: Codeunit "TOO Pipou Blob Mgt.";
-        ZigZag: Codeunit "TOO Optimal Bin. Encoding";
         Logentry: Integer;
         CR: Text[1];
         LF: Text[1];

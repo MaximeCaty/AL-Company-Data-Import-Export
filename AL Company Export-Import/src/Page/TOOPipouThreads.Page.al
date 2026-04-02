@@ -2,7 +2,6 @@ page 51020 "TOO Pipou Threads"
 {
     Caption = 'Import/Export Active Threads';
     PageType = ListPart;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Thread";
     Editable = false;
 
@@ -50,26 +49,18 @@ page 51020 "TOO Pipou Threads"
                 {
                     ApplicationArea = All;
                 }
-                field("Proceed Size KB"; Rec."Proceed Size KB")
-                {
-                    ApplicationArea = All;
-                }
-                field("Total Size To Proceed KB"; Rec."Total Size To Proceed KB")
-                {
-                    ApplicationArea = All;
-                }
             }
         }
     }
 
     trigger OnAfterGetRecord()
     begin
-        if Rec."Total Size To Proceed KB" = 0 then begin
+        if Rec."Total Rec. To Process" = 0 then begin
             ThreadProgressBar := ProgressBar(0);
             ThreadProgress := 0;
         end else begin
-            ThreadProgressBar := ProgressBar(Rec."Proceed Size KB" / Rec."Total Size To Proceed KB");
-            ThreadProgress := Round(Rec."Proceed Size KB" / Rec."Total Size To Proceed KB" * 100, 1);
+            ThreadProgressBar := ProgressBar(Rec."Total Rec. Proceed" / Rec."Total Rec. To Process");
+            ThreadProgress := Round(Rec."Total Rec. Proceed" / Rec."Total Rec. To Process" * 100, 1);
         end;
     end;
 

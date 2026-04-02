@@ -7,7 +7,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
         ArchiveTables: Record "TOO Pipou Archive Tables";
         Threads: Record "TOO Pipou Thread";
         I: Integer;
-        ThreadTotalSize: array[6] of Integer;
+        ThreadTotalRecSize: array[6] of Integer;
         MinSum: Integer;
         MinThread: Integer;
     begin
@@ -26,12 +26,11 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads."Archive ID" := Archive."Archive ID";
             Threads."Archive Name" := Archive."Archive Name";
             ArchiveTables.FindLast();
-            Threads."Total Size To Proceed KB" := Archive."Total Original Data Size (KB)";
+            Threads."Total Rec. To Process" := Archive."Total Records";
             Threads.Insert();
         end else begin
             // Multiple thread
             // Determine data size per thread
-            Archive.CalcFields("Total Original Data Size (KB)");
 
             // Init threads
             for I := 1 to Archive."Number of Threads" do begin
@@ -39,26 +38,26 @@ codeunit 51015 "TOO Pipou Threads Mgt."
                 Threads."Thread No." := I;
                 Threads."Archive ID" := Archive."Archive ID";
                 Threads."Archive Name" := Archive."Archive Name";
-                Threads."Total Size To Proceed KB" := 0;
+                Threads."Total Rec. To Process" := 0;
                 Threads.Insert();
             end;
 
             // Loop tables in decreasing size order
-            ArchiveTables.SetCurrentKey("Archive ID", "Original Data Size (KB)");
-            ArchiveTables.SetAscending("Original Data Size (KB)", false);
+            ArchiveTables.SetCurrentKey("Archive ID", "No. of Records");
+            ArchiveTables.SetAscending("No. of Records", false);
             ArchiveTables.FindSet();
             repeat
                 // Find thread with smallest current sum
-                MinSum := ThreadTotalSize[1];
+                MinSum := ThreadTotalRecSize[1];
                 MinThread := 1;
                 for i := 2 to Archive."Number of Threads" do begin
-                    if ThreadTotalSize[i] < MinSum then begin
-                        MinSum := ThreadTotalSize[i];
+                    if ThreadTotalRecSize[i] < MinSum then begin
+                        MinSum := ThreadTotalRecSize[i];
                         MinThread := i;
                     end;
                 end;
 
-                ThreadTotalSize[MinThread] += ArchiveTables."Original Data Size (KB)"; // table size
+                ThreadTotalRecSize[MinThread] += ArchiveTables."No. of Records"; // table size
 
                 ArchiveTables."Affected Thread" := MinThread;
                 ArchiveTables.Modify();
@@ -69,7 +68,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads.Reset();
             if Threads.FindSet(true) then
                 repeat
-                    Threads."Total Size To Proceed KB" := ThreadTotalSize[Threads."Thread No."];
+                    Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
                     Threads.Modify();
                 until Threads.Next() = 0;
         end;
@@ -84,7 +83,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
         ArchiveFiles: Record "TOO Pipou Archive Files";
         Threads: Record "TOO Pipou Thread";
         I: Integer;
-        ThreadTotalSize: array[6] of Integer;
+        ThreadTotalRecSize: array[6] of Integer;
         MinSum: Integer;
         MinThread: Integer;
         FileTableContentPercent: Decimal;
@@ -113,7 +112,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads."Thread No." := 1;
             Threads."Archive ID" := Archive."Archive ID";
             Threads."Archive Name" := Archive."Archive Name";
-            Threads."Total Size To Proceed KB" := Archive."Total Original Data Size (KB)";
+            Threads."Total Rec. To Process" := Archive."Total Records";
             Threads.Insert();
         end else begin
             // Multiple thread
@@ -125,7 +124,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
                 Threads."Thread No." := I;
                 Threads."Archive ID" := Archive."Archive ID";
                 Threads."Archive Name" := Archive."Archive Name";
-                Threads."Total Size To Proceed KB" := 0;
+                Threads."Total Rec. To Process" := 0;
                 Threads.Insert();
             end;
 
@@ -135,11 +134,11 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             ArchiveFiles.FindSet();
             repeat
                 // Find thread with smallest current sum
-                MinSum := ThreadTotalSize[1];
+                MinSum := ThreadTotalRecSize[1];
                 MinThread := 1;
                 for i := 2 to Archive."Number of Threads" do begin
-                    if ThreadTotalSize[i] < MinSum then begin
-                        MinSum := ThreadTotalSize[i];
+                    if ThreadTotalRecSize[i] < MinSum then begin
+                        MinSum := ThreadTotalRecSize[i];
                         MinThread := i;
                     end;
                 end;
@@ -147,7 +146,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
                 ArchiveTables.Get(ArchiveFiles."Archive ID", ArchiveFiles."Table ID");
                 FileTableContentPercent := ArchiveFiles."Number Of Recs" / ArchiveTables."No. of Records";
 
-                ThreadTotalSize[MinThread] += round(FileTableContentPercent * ArchiveTables."Original Data Size (KB)", 1); // table size 
+                ThreadTotalRecSize[MinThread] += ArchiveFiles."Number Of Recs"; // table size 
 
                 ArchiveFiles."Affected Thread" := MinThread;
                 ArchiveFiles.Modify();
@@ -158,7 +157,7 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads.Reset();
             if Threads.FindSet(true) then
                 repeat
-                    Threads."Total Size To Proceed KB" := ThreadTotalSize[Threads."Thread No."];
+                    Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
                     Threads.Modify();
                 until Threads.Next() = 0;
         end;
@@ -167,23 +166,23 @@ codeunit 51015 "TOO Pipou Threads Mgt."
     #endregion
 
     #region Thread Progression
-    procedure UpdateThreadProgress(ThreadNo: Integer; var AllThreadCompleted: Boolean; var ErrorThrown: Boolean; var ErrorMsg: Text; var DataProceed: Integer; var RecProceed: Integer; var TotFileSize: Decimal; var Archive: Record "TOO Pipou Archive") ThreadTxt: Text
+    procedure UpdateThreadProgress(ThreadNo: Integer; var AllThreadCompleted: Boolean; var ErrorThrown: Boolean; var ErrorMsg: Text; var RecProceed: Integer; var TotFileSize: Decimal; var Archive: Record "TOO Pipou Archive") ThreadTxt: Text
 
     var
         TotCompSize: Decimal;
     begin
-        exit(UpdateThreadProgress(ThreadNo, AllThreadCompleted, ErrorThrown, ErrorMsg, DataProceed, RecProceed, TotFileSize, TotCompSize, Archive));
+        exit(UpdateThreadProgress(ThreadNo, AllThreadCompleted, ErrorThrown, ErrorMsg, RecProceed, TotFileSize, TotCompSize, Archive));
     end;
 
-    procedure UpdateThreadProgress(ThreadNo: Integer; var AllThreadCompleted: Boolean; var ErrorThrown: Boolean; var ErrorMsg: Text; var DataProceed: Integer; var RecProceed: Integer; var TotFileSize: Decimal; var TotCompSize: Decimal; var Archive: Record "TOO Pipou Archive") ThreadTxt: Text
+    procedure UpdateThreadProgress(ThreadNo: Integer; var AllThreadCompleted: Boolean; var ErrorThrown: Boolean; var ErrorMsg: Text; var RecProceed: Integer; var TotFileSize: Decimal; var TotCompSize: Decimal; var Archive: Record "TOO Pipou Archive") ThreadTxt: Text
     var
         Thread: Record "TOO Pipou Thread";
         SessionEvent: Record "Session Event";
         ActiveSession: Record "Active Session";
+        Mgt: Codeunit "TOO Pipou Mgt.";
     begin
         if not Thread.Get(ThreadNo) then exit; // process may be fully completed
         AllThreadCompleted := AllThreadCompleted and (Thread.Status = Thread.Status::"Completed ✅");
-        DataProceed += Thread."Proceed Size KB";
         RecProceed += Thread."Total Rec. Proceed";
         TotFileSize += Thread."Files Size (KB)";
         TotCompSize += Thread."Files Compressed Size (KB)";
@@ -223,8 +222,8 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             // Update UI
             ThreadTxt := 'Thread ' + Format(ThreadNo) + ' : ' + Format(Thread.Status);
             if Thread.Status <> Thread.Status::"Completed ✅" then begin
-                if Thread."Total Size To Proceed KB" > 0 then
-                    ThreadTxt += '  [' + ProgressBar(Thread."Proceed Size KB" / Thread."Total Size To Proceed KB") + ']  ';
+                if Thread."Total Rec. To Process" > 0 then
+                    ThreadTxt += '  [' + Mgt.ProgressBar(Thread."Total Rec. Proceed" / Thread."Total Rec. To Process") + ']  ';
                 if Thread.Status IN [thread.Status::"Exporting Data", thread.Status::"Compressing - Storing"] then begin
                     ThreadTxt += 'Current Table : ';
                     ThreadTxt += format(Thread."Current Table") + ' (' + Format(Thread."Current Table Progress %") + '%)';
@@ -259,39 +258,12 @@ codeunit 51015 "TOO Pipou Threads Mgt."
                         if Archive."Process Status" = Archive."Process Status"::"⌛ Exporting" then
                             Archive.Delete(true);
                 end else
-                    Error(CanNotRunTwoExport, ActiveSession."User ID", Thread.SystemCreatedAt);
+                    // Session running - check Archive exists
+                    if Archive.Get(Thread."Archive Name", Thread."Archive ID") then
+                        Error(CanNotRunTwoExport, ActiveSession."User ID", Thread.SystemCreatedAt)
+                    else
+                        Thread.Delete();
             until Thread.Next() = 0;
-    end;
-    #endregion
-
-
-    #region ProgressBar
-    procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
-    var
-        i: Integer;
-        ProgressChar: Integer;
-    begin
-        ProgressChar := Round(ProgressPercent * 24, 1, '<') + 1;
-        for i := 1 to 24 do begin
-            if i < ProgressChar then
-                AsciiResult += '▰'
-            else
-                if i = ProgressChar then begin
-                    case (((CurrentDateTime().Time().Second * 2) + (round(CurrentDateTime().Time().Millisecond / 1000, 1))) mod 4) of
-                        0:
-                            AsciiResult += '▴';
-                        1:
-                            AsciiResult += '◂';
-                        2:
-                            AsciiResult += '▾';
-                        3:
-                            AsciiResult += '▸';
-                    end;
-                end else
-                    AsciiResult += '▱';
-            if i = 12 then // half of 25
-                AsciiResult += Format(Round(ProgressPercent * 100, 1)).PadLeft(2, '0') + '%';
-        end;
     end;
     #endregion
 }

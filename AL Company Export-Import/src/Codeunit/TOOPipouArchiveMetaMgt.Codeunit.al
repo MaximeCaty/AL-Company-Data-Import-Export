@@ -4,14 +4,13 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
     procedure CreateArchiveFile(Archive: Record "TOO Pipou Archive"; var TarTempBlob: codeunit "Temp Blob")
     var
         InStr: InStream;
-        TarMgt: Codeunit "TOO TAR Mgt.";
         ZipMgt: Codeunit "Data Compression";
+        Mgt: codeunit "TOO Pipou Mgt.";
         ArchiveFile: Record "TOO Pipou Archive Files";
         CreatingArchive: Label 'Merging files into an archive... \ #1########### \ #2#########';
         I: Integer;
         ChunkCount: Integer;
         Window: Dialog;
-        ImpExpMgt: codeunit "TOO Import/Export Mgt";
         TempBlobMeta: Codeunit "Temp Blob";
         TempBlobCompressedMeta: Codeunit "Temp Blob";
         ChunkOutStr: OutStream;
@@ -22,8 +21,8 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
     begin
         LF[1] := 10; // Line feed, '\n'
 
+        // Using Zip for fast archiving and reduce zero padding growth of TAR files
         ZipMgt.CreateZipArchive();
-        //TarMgt.CreateTarArchive();
 
         // Initialise metadata archive info.
         clear(JsonArchive);
@@ -47,7 +46,6 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                 if InStr.Length() = 0 then
                     Error('File %1 content is empty.', ArchiveFile."File Name");
                 ZipMgt.AddEntry(InStr, ArchiveFile."File Name");
-                //TarMgt.WriteTarEntry(InStr, ArchiveFile."File Name");
 
                 // File Metadata
                 JsonFileObj.Add('File Name', ArchiveFile."File Name");
@@ -70,7 +68,7 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                 I += 1;
 
                 if GuiAllowed then begin
-                    Window.Update(1, ImpExpMgt.ProgressBar(I / ChunkCount));
+                    Window.Update(1, Mgt.ProgressBar(I / ChunkCount));
                     Window.Update(2, Format(I) + ' / ' + Format(ChunkCount));
                 end;
             until ArchiveFile.Next() = 0;
@@ -96,15 +94,7 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         TempBlobMeta.CreateOutStream(ChunkOutStr);
         JsonArchive.WriteTo(ChunkOutStr);
         TempBlobMeta.CreateInStream(InStr);
-        /*if InStr.Length > 102400 then begin // meta larger than 100 KB 
-            // Compressed metadata
-            TempBlobCompressedMeta.CreateOutStream(ChunkOutStr);
-            ZipMgt.GZipCompress(InStr, ChunkOutStr);
-            TempBlobCompressedMeta.CreateInStream(InStr);
-            TarMgt.WriteTarEntry(InStr, 'datameta.json.gz');
-        end else*/
         ZipMgt.AddEntry(InStr, 'datameta.json');
-        //TarMgt.WriteTarEntry(InStr, 'datameta.json');
 
         if GuiAllowed then
             Window.Close();
@@ -135,6 +125,7 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         // Write global archive info.
         JsonArchive.Add('ID', Archive."Archive ID");
         JsonArchive.Add('Sequence No.', Archive."Archive Sequence No.");
+        JsonArchive.Add('Version', 1);
         JsonArchive.Add('Export From CompanyName', Archive."Exported From Company");
         JsonArchive.Add('Export DateTime', Archive."Exported Date Time");
         JsonArchive.Add('Data Size (KB)', Archive."Files Size (KB)");
@@ -143,7 +134,6 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         JsonArchive.Add('No. Chunks', Archive."No. Files");
         JsonArchive.Add('Total Records', Archive."Total Records");
         JsonArchive.Add('Prefered Compression Mode', Archive."Prefered Compression Mode");
-        JsonArchive.Add('Enable Optimal Encode', Archive."Enable Optimal Encode");
         JsonArchive.Add('Enable Columns Transcoding', Archive."Enable Columns Transcoding");
         if Archive."Diff. Export Start DT" <> 0DT then begin
             JsonArchive.Add('Is Differential Export', true);
@@ -162,10 +152,6 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         JsonTableInfo.Add('Caption', ArchiveTable."Table Caption");
         JsonTableInfo.Add('DataPerCompany', ArchiveTable.DataPerCompany);
         JsonTableInfo.Add('From No. of Records', ArchiveTable."No. of Records");
-        JsonTableInfo.Add('From Record Size', ArchiveTable."Record Size");
-        JsonTableInfo.Add('From Size (KB)', ArchiveTable."Original SQL Data+Index (KB)");
-        JsonTableInfo.Add('From Data Size (KB)', ArchiveTable."Original Data Size (KB)");
-        JsonTableInfo.Add('From Index Size (KB)', ArchiveTable."Original Index Size (KB)");
     end;
 
     procedure JsonAddFieldInfo(var ArchiveTableField: Record "TOO Pipou Archive Fields")
@@ -221,11 +207,13 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         ArchTable: Record "TOO Pipou Archive Tables";
         ArchFields: Record "TOO Pipou Archive Fields";
         ArchFile: Record "TOO Pipou Archive Files";
+        AutoMatchedFields: Integer;
         Win: dialog;
         LoadingMeta: Label 'Loading archive data definition...\ #1####### \ #2######';
         ArchiveMeta: Label 'Archive global information';
         TableMetaLbl: Label 'Tables metadata definitions';
         FilesMeta: Label 'Files metadata definitions';
+        ErrUnsupportedCompression: Label 'This archive is not supported for Cloud import, it was created using On-Premise advanced compression.';
         Mgt: codeunit "TOO Pipou Mgt.";
         AdvComp: Codeunit "TOO Advanced Compression Mgt.";
         TableMeta: Record "Table Metadata";
@@ -253,7 +241,6 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
         Archive."Total Tables" := GetJsonDecAt('$.[''Total Tables'']');
         Archive."No. Files" := GetJsonDecAt('$.[''No. Chunks'']');
         Archive."Total Records" := GetJsonDecAt('$.[''Total Records'']');
-        Archive."Enable Optimal Encode" := GetJsonBoolAt('$.[''Enable Optimal Encode'']');
         Archive."Enable Columns Transcoding" := GetJsonBoolAt('$.[''Enable Columns Transcoding'']');
         if JsonObj.SelectToken('$.[''Is Differential Export'']', JsonToken) then
             if JsonToken.AsValue().AsBoolean() then
@@ -283,13 +270,18 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                 case GetJsonText(FileObj, 'Compression Mode').Trim().ToLower() of
                     '1', 'gzip', 'gz':
                         ArchFile."Compression Mode" := ArchFile."Compression Mode"::Gzip;
-#if ONPREM
                     '3', 'zstandard', 'zst':
                         ArchFile."Compression Mode" := ArchFile."Compression Mode"::Zstandard;
                     '4', 'libbsc', 'bsc':
                         ArchFile."Compression Mode" := ArchFile."Compression Mode"::libbsc;
-#endif
+                    '10', 'mcmx', 'MCMX':
+                        ArchFile."Compression Mode" := ArchFile."Compression Mode"::MCMX;
                 end;
+#if not ONPREM
+                if not (ArchFile."Compression Mode" in [ArchFile."Compression Mode"::Gzip, ArchFile."Compression Mode"::None, ArchFile."Compression Mode"::"Auto (Cloud)"]) then
+                    Error(ErrUnsupportedCompression);
+#endif
+
                 ArchFile."Compressed Length" := GetJsonInt(FileObj, 'Compressed Length');
                 ArchFile."Uncompressed Length" := GetJsonInt(FileObj, 'Uncompressed Length');
                 ArchFile."Comp. Ratio" := round(100 * (1 - (ArchFile."Compressed Length" / ArchFile."Uncompressed Length")), 0.01);
@@ -320,10 +312,6 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                 ArchTable."Table Caption" := GetJsonText(TableObj, 'Caption');
                 ArchTable."No. of Records" := GetJsonInt(TableObj, 'From No. of Records');
                 ArchTable.DataPerCompany := GetJsonBool(TableObj, 'DataPerCompany');
-                ArchTable."Record Size" := GetJsonDec(TableObj, 'From Record Size');
-                ArchTable."Original SQL Data+Index (KB)" := GetJsonInt(TableObj, 'From Size (KB)');
-                ArchTable."Original Data Size (KB)" := GetJsonInt(TableObj, 'From Data Size (KB)');
-                ArchTable."Original Index Size (KB)" := GetJsonInt(TableObj, 'From Index Size (KB)');
                 // Try to match table
                 TableMeta.SetRange(ID, ArchTable."Table ID");
                 if TableMeta.FindFirst() then begin
@@ -332,6 +320,7 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                 end;
 
                 // Fields sub-loop
+                AutoMatchedFields := 0;
                 if TableObj.Get('Fields', FieldToken) then begin
                     FieldsArray := FieldToken.AsArray();
                     foreach FieldToken in FieldsArray do begin
@@ -380,11 +369,19 @@ codeunit 51012 "TOO Pipou Archive Meta Mgt."
                         ArchFields."Matched Table ID" := ArchTable."Table ID"; // avoid additional calcfield                         
                         ArchFields.SearchMatchingField(ArchTable."Table ID");
                         ArchFields.Insert();
+                        if ArchFields."Matched Field ID" <> 0 then
+                            AutoMatchedFields += 1;
                     end;
                 end;
 
-                // Set Match Status
-                ArchTable.UpdateMatchStatus();
+                // Table Match Status
+                if (ArchTable."Matched Table ID" = 0) or (AutoMatchedFields = 0) then
+                    ArchTable."Match Status" := ArchTable."Match Status"::Missing
+                else
+                    if AutoMatchedFields = FieldsArray.Count() then
+                        ArchTable."Match Status" := ArchTable."Match Status"::Full
+                    else
+                        ArchTable."Match Status" := ArchTable."Match Status"::Partial;
                 ArchTable.Insert();
 
                 I += 1;
