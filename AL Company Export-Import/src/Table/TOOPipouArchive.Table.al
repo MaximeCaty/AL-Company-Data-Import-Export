@@ -355,40 +355,4 @@ table 51006 "TOO Pipou Archive"
         FileName := Rec."Archive Name";
         DownloadFromStream(TarInStream, '', '', '', FileName);
     end;
-
-
-    #region Store Meta
-    procedure StoreTableMeta(var TableMeta: Record "Table Metadata"; NoOfRecords: Integer)
-    var
-        ArchiveTables: Record "TOO Pipou Archive Tables";
-    begin
-        ArchiveTables.Init();
-        ArchiveTables."Archive ID" := Rec."Archive ID";
-        ArchiveTables.DataPerCompany := TableMeta.DataPerCompany;
-        ArchiveTables."Table DataClassification" := TableMeta.DataClassification;
-        ArchiveTables."No. of Records" := NoOfRecords;
-        ArchiveTables."Table Caption" := TableMeta.Caption;
-        ArchiveTables."Table Name" := TableMeta.Name;
-        ArchiveTables."Table ID" := TableMeta.ID;
-        ArchiveTables.Insert();
-    end;
-
-    procedure StoreFieldMeta(var FieldInfo: Record Field)
-    var
-        ArchiveTableFields: Record "TOO Pipou Archive Fields";
-    begin
-        ArchiveTableFields.Init();
-        ArchiveTableFields."Archive ID" := Rec."Archive ID";
-        ArchiveTableFields."Table ID" := FieldInfo.TableNo;
-        ArchiveTableFields."Field ID" := FieldInfo."No.";
-        ArchiveTableFields."Field Caption" := FieldInfo."Field Caption";
-        ArchiveTableFields."Field Name" := FieldInfo.FieldName;
-        ArchiveTableFields."Field DataClassification" := FieldInfo.DataClassification;
-        ArchiveTableFields."Field Type" := FieldInfo.Type;
-        ArchiveTableFields."Field Type Name" := FieldInfo."Type Name";
-        ArchiveTableFields."Max Length" := FieldInfo.Len;
-        ArchiveTableFields."Part of Primary Key" := FieldInfo.IsPartOfPrimaryKey;
-        ArchiveTableFields.Insert();
-    end;
-    #endregion
 }

@@ -12,8 +12,8 @@
   "logo": "",
   "dependencies": [],
   "screenshots": [],
-  "platform": "21.0.0.0",
-  "application": "21.0.0.0",
+  "platform": "23.0.0.0",
+  "application": "23.0.0.0",
   "idRanges": [
     {
       "from": 51000,
@@ -30,8 +30,8 @@
     "NoImplicitWith",
     "TranslationFile"
   ],
-  "target": "Cloud",
+  "target": "OnPrem",
   "preprocessorSymbols": [
-    ""
+    "ONPREM"
   ]
 }
