@@ -1,8 +1,8 @@
 {
   "id": "201ed8e4-6893-4a58-a79c-42e072139566",
-  "name": "AL Company Export-Import",
+  "name": "AL Company Import-Export",
   "publisher": "Maxime Caty",
-  "version": "23.0.0.0",
+  "version": "1.0.0.0",
   "brief": "Offer company data import-export feature, with table selection, schema matching and optimised archive format.",
   "description": "",
   "privacyStatement": "",

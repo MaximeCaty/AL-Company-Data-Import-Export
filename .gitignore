@@ -3,3 +3,5 @@ launch.json
 rad.json
 settings.json
 *.xlf
+AL Company Export-Import/*.app
+AL Company Export-Import/*.zip
