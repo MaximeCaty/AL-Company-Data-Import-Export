@@ -62,7 +62,7 @@ page 51005 "TOO Pipou Archive Files"
                         Rec.Data.CreateInStream(Instr)
                     else begin
                         // Decompress
-                        Win.Open('pDecompressing using ' + Format(Rec."Compression Mode"));
+                        Win.Open('Decompressing using ' + Format(Rec."Compression Mode"));
                         Rec.Data.CreateInStream(Instr);
                         TempBlob.CreateOutStream(OutStr);
                         AdvCompMgt.Decompress(Instr, OutStr, Rec."Compression Mode");

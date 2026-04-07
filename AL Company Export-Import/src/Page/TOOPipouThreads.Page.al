@@ -31,7 +31,7 @@ page 51020 "TOO Pipou Threads"
                 {
                     Caption = 'Progress Bar';
                     Editable = false;
-                    Width = 20;
+                    Width = 15;
                 }
                 field("Current Table"; Rec."Current Table")
                 {
@@ -70,7 +70,7 @@ page 51020 "TOO Pipou Threads"
         ProgressChar: Integer;
     begin
         ProgressChar := Round(ProgressPercent * 24, 1, '<') + 1;
-        for i := 1 to 20 do begin
+        for i := 1 to 12 do begin
             if i < ProgressChar then
                 AsciiResult += '▰'
             else

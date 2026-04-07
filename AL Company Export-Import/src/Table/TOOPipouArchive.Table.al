@@ -4,6 +4,7 @@ table 51006 "TOO Pipou Archive"
     LookupPageId = "TOO Pipou Archive Card";
     DrillDownPageId = "TOO Pipou Archive Card";
     DataPerCompany = false;
+    DataCaptionFields = "Archive Name";
 
 
     fields

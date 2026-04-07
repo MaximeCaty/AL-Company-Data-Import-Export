@@ -7,6 +7,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
     SourceTable = "TOO Pipou Archive";
     InsertAllowed = false;
     DeleteAllowed = false;
+    RefreshOnActivate = true;
 
     layout
     {
@@ -321,7 +322,10 @@ page 51018 "TOO Pipou Import Asst. Setup"
 
                 trigger OnAction()
                 begin
+                    PressedImport := true;
                     StartImport();
+                    Page.Run(Page::"TOO Pipou Archive Card", Rec);
+                    CurrPage.Close();
                 end;
             }
         }
@@ -366,6 +370,18 @@ page 51018 "TOO Pipou Import Asst. Setup"
 #endif
     end;
 
+    trigger OnAfterGetCurrRecord()
+    var
+        Archive: record "TOO Pipou Archive";
+    begin
+        if (step = 5) and PressedImport then begin
+            if Archive.Get(Rec."Archive Name", Rec."Archive ID") then begin
+                Page.Run(Page::"TOO Pipou Archive Card", Archive);
+                CurrPage.Close();
+            end;
+        end;
+    end;
+
     local procedure ShowStep1()
     begin
         Step1Visible := true;
@@ -388,6 +404,9 @@ page 51018 "TOO Pipou Import Asst. Setup"
 
     local procedure ShowStep4()
     begin
+        if ImportMethod = ImportMethod::"DotNet SqlBulkCopy" then begin
+
+        end;
         Step4Visible := true;
         NextEnable := true;
         BackEnable := true;
@@ -523,6 +542,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
 
     var
         ImportMethod: Option "AL Record.Insert","DotNet SqlBulkCopy";
+        PressedImport: Boolean;
         ArchiveName: Text;
         BackEnable: Boolean;
         FinishEnable: Boolean;

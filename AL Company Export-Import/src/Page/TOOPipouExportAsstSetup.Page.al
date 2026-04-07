@@ -3,9 +3,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
     ApplicationArea = All;
     Caption = 'Assisted company data export', Comment = 'Export données société assisté';
     PageType = NavigatePage;
-    SourceTable = "TOO Pipou Archive";
-    SourceTableTemporary = true;
+    SourceTable = "TOO Pipou Archive"; // not temporary to allow catch of OnAfterGetRecord when the window dialog is closed
     UsageCategory = Lists;
+    RefreshOnActivate = true;
 
     layout
     {
@@ -94,26 +94,35 @@ page 51008 "TOO Pipou Export Asst. Setup"
                     ToolTip = 'Specify to include all table with name containinag " archive" such as workflow event archives or purchase/sales document archives. This data may not be relevent for simple use case or test scenario, and could be skipped to reduce file size and fasten export.';
                     ApplicationArea = All;
                 }
-                field("Diff. Export Start DT"; Rec."Diff. Export Start DT")
+                field("Diff. Export Start DT"; TempArchive."Diff. Export Start DT")
                 {
                     Caption = 'Differential Export From DT', Comment = 'Export differentiel depuis Date heure';
                     ToolTip = 'Specify to export only date created or modified after specified date time. The option may be used to update a company that were already imported with only newly created data, avoiding a full import.';
                     ApplicationArea = All;
-
-                    trigger OnValidate()
-                    begin
-                        if (xRec."Diff. Export Start DT" <> 0DT) and (Rec."Diff. Export Start DT" <> 0DT) then
-                            Message('Note that estimated data size and duration calculate based on full company data size.');
-                    end;
                 }
             }
             #endregion
-            #region Step 4 Format
+
+            #region Step 4 Tables
             group(Step4)
+            {
+                Caption = 'Tables to export', Comment = 'Tables a exporter';
+                InstructionalText = 'Review and modify the list of table data to export.', Comment = 'Passer en revue la liste des tables a exporter et modifier la liste si besoin.';
+                Visible = Step4Visible;
+
+                part(TableList; "TOO Pipou Export Tables Sub")
+                {
+                    UpdatePropagation = Both;
+                }
+            }
+            #endregion
+
+            #region Step 5 Format
+            group(Step5)
             {
                 Caption = 'File Format', Comment = 'Format du fichier';
                 InstructionalText = 'Specify the data format options and compression method. Default option are the best suited for most case.', Comment = 'Spécifiez les options de format de données et la méthode de compression. Les options par défaut sont optimales dans la plupart des cas.';
-                Visible = Step4Visible;
+                Visible = Step5Visible;
 
                 field(PreferedCompressionMode; PreferedCompressionMode)
                 {
@@ -130,8 +139,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
 #endif
                             IncludeAuditFields := true;
                             PreferedCompressionMode := PreferedCompressionMode::"Auto (On-Premise)";
-                            EnableOptimalEncode := false;
-                            // 150 Mb
+                            // 75 Mb
                             MaxChunkSize := 75 * 1024 * 1024;
                             MaxChunkSizeOption := MaxChunkSizeOption::"75 MB";
 
@@ -139,7 +147,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
                         if PreferedCompressionMode = PreferedCompressionMode::"Auto (Cloud)" then begin
                             IncludeAuditFields := false;
                             PreferedCompressionMode := PreferedCompressionMode::"Auto (Cloud)";
-                            EnableOptimalEncode := true;
                             // 200 Mb
                             MaxChunkSize := 200 * 1024 * 1024;
                             MaxChunkSizeOption := MaxChunkSizeOption::"200 MB";
@@ -157,14 +164,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
                     {
                         Caption = 'Enable Column transcoding';
                         ToolTip = 'Specify to enable per column storage (parquet like format). Allow to exclude empty column and improve overall compression ratio.';
-                        ApplicationArea = all;
-                    }
-
-                    // Increase file size and import not supported
-                    field(EnableOptimalEncode; EnableOptimalEncode)
-                    {
-                        Caption = 'Enable Optimal encoding';
-                        ToolTip = 'Use optimal binary encoding for numeric values : Reduce RAM usage for export/import, only reduce file size when using GZip compression.';
                         ApplicationArea = all;
                     }
                     field(MaxChunkSizeOption; MaxChunkSizeOption)
@@ -212,20 +211,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
                 }
             }
             #endregion
-            #region Step 5 Tables
-            group(Step5)
-            {
-                Caption = 'Tables to export', Comment = 'Tables a exporter';
-                InstructionalText = 'Review and modify the list of table data to export.', Comment = 'Passer en revue la liste des tables a exporter et modifier la liste si besoin.';
-                Visible = Step5Visible;
 
-                part(TableList; "TOO Pipou Export Tables Sub")
-                {
-                    SubPageLink = "Archive ID" = field("Archive ID");
-                    UpdatePropagation = Both;
-                }
-            }
-            #endregion
             #region Step 6 Export
 
             group(Step6)
@@ -264,7 +250,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
                 {
                     Caption = 'Multithreading', Comment = 'Exécution parallèle';
 
-                    field(MultiThreading; Rec."Number of Threads")
+                    field(MultiThreading; TempArchive."Number of Threads")
                     {
                         Caption = 'Number of Threads', Comment = 'Nombre de thread';
                         NotBlank = true;
@@ -317,8 +303,15 @@ page 51008 "TOO Pipou Export Asst. Setup"
                 InFooterBar = true;
 
                 trigger OnAction()
+                var
+                    Archive: Record "TOO Pipou Archive";
                 begin
+                    PressedExport := true;
                     StartExport();
+                    Rec.SetRange("Archive ID", TempArchive."Archive ID");
+                    Rec.FindFirst();
+                    Page.Run(Page::"TOO Pipou Archives", Rec);
+                    CurrPage.Close();
                 end;
             }
         }
@@ -330,9 +323,11 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Step := 1;
         EnableControls();
         ArchiveGUID := CreateGuid();
+        TempArchive."Archive ID" := ArchiveGUID;
+        Rec.Init();
         Rec."Archive ID" := ArchiveGUID;
-        Rec."Number of Threads" := 4;
-        Rec.Insert();
+        TempArchive."Number of Threads" := 4;
+        TempArchive.Insert();
         // Init Default option
         BlobMaxSize := 50 * 1024 * 1024; // 50 Mb
         BlobMaxSizeOption := BlobMaxSizeOption::"50 MB";
@@ -341,14 +336,12 @@ page 51008 "TOO Pipou Export Asst. Setup"
 #if ONPREM
         IncludeAuditFields := true;
         PreferedCompressionMode := PreferedCompressionMode::"Auto (On-Premise)";
-        EnableOptimalEncode := false;
         // 150 Mb
         MaxChunkSize := 150 * 1024 * 1024;
         MaxChunkSizeOption := MaxChunkSizeOption::"100 MB";
 #else
         IncludeAuditFields := false;
         PreferedCompressionMode := PreferedCompressionMode::"Auto (Cloud)";
-        EnableOptimalEncode := true;
         // 200 Mb
         MaxChunkSize := 200 * 1024 * 1024;
         MaxChunkSizeOption := MaxChunkSizeOption::"200 MB";
@@ -364,6 +357,18 @@ page 51008 "TOO Pipou Export Asst. Setup"
         if not WriteInsideTryFunctionEnabled.Run() then
             Error(WriteInTryMusTBeEnabled);
         ThreadMgt.CheckThreadsRunning();
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    var
+        Archive: record "TOO Pipou Archive";
+    begin
+        if (step = 6) and PressedExport then begin
+            Rec.SetRange("Archive ID", TempArchive."Archive ID");
+            Rec.FindFirst();
+            Page.Run(Page::"TOO Pipou Archive Card", Rec);
+            CurrPage.Close();
+        end;
     end;
 
     local procedure ShowStep1()
@@ -388,6 +393,11 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
     local procedure ShowStep4()
     begin
+        if not TableListCreated then begin
+            CreateTablesLists();
+            TableListCreated := true;
+        end;
+
         Step4Visible := true;
         NextEnable := true;
         BackEnable := true;
@@ -395,11 +405,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
     local procedure ShowStep5()
     begin
-        if not TableListCreated then begin
-            CreateTablesLists();
-            TableListCreated := true;
-        end;
-
         Step5Visible := true;
         NextEnable := true;
         BackEnable := true;
@@ -510,9 +515,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
                         RecRef.Close();
 
                         if NoOfRec > 0 then begin
-                            Rec.StoreTableMeta(TableMeta, NoOfRec);
+                            StoreTableMeta(TableMeta, NoOfRec);
                             repeat
-                                Rec.StoreFieldMeta(Fields);
+                                StoreFieldMeta(Fields);
                             until Fields.Next() = 0;
                         end;
                     end;
@@ -561,7 +566,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
     var
         Win: Dialog;
         CreatingArch: Label 'Creating archive metadata...';
-        Archive: Record "TOO Pipou Archive";
         Exportcompleted: Label 'The export of company %1 has been completed in %2.\ \Total Data Size : %3\Total Compressed Size : %4';
         NothingToExport: Label 'There were no data found to export in given company. If you provide a date time for differential export, make sure records were created after this date.';
         ProcessingStart: DateTime;
@@ -572,30 +576,33 @@ page 51008 "TOO Pipou Export Asst. Setup"
     begin
         Win.Open(CreatingArch);
         // Create archive record
-        Archive.Init();
-        Archive."Archive ID" := ArchiveGUID;
-        Archive."Archive Sequence No." := 1;
+        Rec.Init();
+        Rec."Archive ID" := ArchiveGUID;
+        Rec."Archive Sequence No." := 1;
         // date format 9 : 2025-09-13T18:20:54.1000000Z
-        Archive."Archive Name" := ExportCompanyName + '-' + format(CurrentDateTime, 0, 9).Substring(1, 16).Replace(':', '.') + '.' + format(PreferedCompressionMode) + '.zip';
-        Archive."Exported From Company" := ExportCompanyName;
-        Archive."Exported Date Time" := CurrentDateTime;
-        Archive."Number of Threads" := Rec."Number of Threads";
-        Archive."Prefered Compression Mode" := PreferedCompressionMode;
-        Archive."Blob Max Size" := BlobMaxSize;
-        Archive."Chunk Max Size" := MaxChunkSize;
-        Archive."Diff. Export Start DT" := Rec."Diff. Export Start DT";
-        Archive."Process Status" := Archive."Process Status"::"⌛ Exporting";
-        Archive.ClassifiedDataHandling := ClassifiedDataHandling;
-        Archive."Enable Columns Transcoding" := EnableColumnTranscode;
+        if PreferedCompressionMode in [PreferedCompressionMode::"Auto (On-Premise)", PreferedCompressionMode::libbsc, PreferedCompressionMode::zStandard, PreferedCompressionMode::MCMX] then
+            Rec."Archive Name" := ExportCompanyName + '-' + format(CurrentDateTime, 0, 9).Substring(1, 10).Replace(':', '.') + ' (OnPrem).zip'
+        else
+            Rec."Archive Name" := ExportCompanyName + '-' + format(CurrentDateTime, 0, 9).Substring(1, 10).Replace(':', '.') + '.zip';
+        Rec."Exported From Company" := ExportCompanyName;
+        Rec."Exported Date Time" := CurrentDateTime;
+        Rec."Number of Threads" := TempArchive."Number of Threads";
+        Rec."Prefered Compression Mode" := PreferedCompressionMode;
+        Rec."Blob Max Size" := BlobMaxSize;
+        Rec."Chunk Max Size" := MaxChunkSize;
+        Rec."Diff. Export Start DT" := TempArchive."Diff. Export Start DT";
+        Rec."Process Status" := Rec."Process Status"::"⌛ Exporting";
+        Rec.ClassifiedDataHandling := ClassifiedDataHandling;
+        Rec."Enable Columns Transcoding" := EnableColumnTranscode;
         // Set the actual number of tables and record after user selection
         TempArchiveTables.Reset();
-        Archive."Total Tables" := TempArchiveTables.Count();
+        Rec."Total Tables" := TempArchiveTables.Count();
         TempArchiveTables.CalcSums("No. of Records");
-        Archive."Total Records" := TempArchiveTables."No. of Records";
+        Rec."Total Records" := TempArchiveTables."No. of Records";
 
         // Store the archive informations
-        if not Archive.Insert(true) then
-            Archive.Modify(); // if second time pressing export
+        if not Rec.Insert(true) then
+            Rec.Modify(); // if second time pressing export
 
         // Store Tables
         ArchiveTables.SetRange("Archive ID");
@@ -619,23 +626,20 @@ page 51008 "TOO Pipou Export Asst. Setup"
             ArchiveTablesFields."Field ID" := TempArchiveTableFields."Field ID";
             ArchiveTablesFields.Insert();
         until TempArchiveTableFields.Next() = 0;
-
+        Commit();
         Win.Close();
 
         // Run exports
         ProcessingStart := CurrentDateTime;
-        PipouExport.MultiThreadExport(Archive);
-        Archive.Get(Archive."Archive Name", Archive."Archive ID");
-        if Archive."No. Files" = 0 then
+        PipouExport.MultiThreadExport(Rec);
+        Rec.Get(Rec."Archive Name", Rec."Archive ID");
+        if Rec."No. Files" = 0 then
             Error(NothingToExport);
 
         // Download
-        Archive.DownloadArchiveFile();
+        Rec.DownloadArchiveFile();
 
-        Message(Exportcompleted, ExportCompanyName, CurrentDateTime - ProcessingStart, Format(round(Archive."Files Size (KB)" / 1024, 0.01)) + ' Mb', Format(round(archive."Files Compressed Size (KB)" / 1024, 0.01)) + ' Mb');
-
-        Page.Run(Page::"TOO Pipou Archives");
-        CurrPage.Close();
+        Message(Exportcompleted, ExportCompanyName, CurrentDateTime - ProcessingStart, Format(round(Rec."Files Size (KB)" / 1024, 0.01)) + ' Mb', Format(round(Rec."Files Compressed Size (KB)" / 1024, 0.01)) + ' Mb');
     end;
     #endregion
 
@@ -692,11 +696,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
     #region Store Meta
     procedure StoreTableMeta(var TableMeta: Record "Table Metadata"; NoOfRecords: Integer)
-    var
-    //ArchiveTables: Record "TOO Pipou Archive Tables";
     begin
         TempArchiveTables.Init();
-        TempArchiveTables."Archive ID" := Rec."Archive ID";
+        TempArchiveTables."Archive ID" := TempArchive."Archive ID";
         TempArchiveTables.DataPerCompany := TableMeta.DataPerCompany;
         TempArchiveTables."Table DataClassification" := TableMeta.DataClassification;
         TempArchiveTables."No. of Records" := NoOfRecords;
@@ -707,11 +709,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
     end;
 
     procedure StoreFieldMeta(var FieldInfo: Record Field)
-    var
-    //ArchiveTableFields: Record "TOO Pipou Archive Fields";
     begin
         TempArchiveTableFields.Init();
-        TempArchiveTableFields."Archive ID" := Rec."Archive ID";
+        TempArchiveTableFields."Archive ID" := TempArchive."Archive ID";
         TempArchiveTableFields."Table ID" := FieldInfo.TableNo;
         TempArchiveTableFields."Field ID" := FieldInfo."No.";
         TempArchiveTableFields."Field Caption" := FieldInfo."Field Caption";
@@ -726,6 +726,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
     #endregion
 
     var
+        PressedExport: Boolean;
         BackEnable: Boolean;
         FinishEnable: Boolean;
         NextEnable: Boolean;
@@ -751,8 +752,9 @@ page 51008 "TOO Pipou Export Asst. Setup"
         CompanyTotalTables: Integer;
         CompanyTotalRecords: Integer;
         ArchiveGUID: Guid; // generate before Archive rec for table and field list
-        EnableOptimalEncode, EnableColumnTranscode : Boolean;
+        EnableColumnTranscode: Boolean;
         AdvancedEncodingVisible: Boolean;
         TempArchiveTables: Record "TOO Pipou Archive Tables" temporary;
         TempArchiveTableFields: Record "TOO Pipou Archive Fields" temporary;
+        TempArchive: Record "TOO Pipou Archive" temporary;
 }

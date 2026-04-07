@@ -90,7 +90,7 @@ page 51007 "TOO Pipou Archives"
 
                 trigger OnAction()
                 var
-                    ConfirmLbl: Label 'The archive file is ~%1 %2.\ Downlaod this file ?';
+                    ConfirmLbl: Label 'This archive file is ~%1 %2.\ Download the file ?';
                 begin
                     if Confirm(StrSubstNo(ConfirmLbl, round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
                         Rec.DownloadArchiveFile();

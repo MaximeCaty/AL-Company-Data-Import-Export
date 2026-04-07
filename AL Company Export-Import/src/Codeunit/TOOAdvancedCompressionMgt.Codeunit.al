@@ -5,14 +5,12 @@ codeunit 51002 "TOO Advanced Compression Mgt."
         case CompressionModeText.ToLower().Trim() of
             '1', 'gzip', 'gz':
                 Compression := Compression::Gzip;
-#if ONPREM
             '3', 'zstandard', 'zst':
                 Compression := Compression::zStandard;
             '4', 'libbsc', 'bsc':
                 Compression := Compression::libbsc;
             '10', 'MCMX', 'mcmx':
                 Compression := Compression::MCMX;
-#endif
             '5', 'auto':
                 Compression := Compression::"Auto (On-Premise)";
         end;
