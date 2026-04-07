@@ -18,7 +18,7 @@ Use this app to copy a company across different instances, without replacing the
 
 ### Performance Sample
 
-|                               | Cronus W1 23.18    | Company with 1Y intensive activities |
+|                               | Cronus W1          | Misc. Company |
 |-------------------------------|--------------------|--------------------------------------|
 | Database MDF disk size        | 1 GB               | 45 GB           |
 | Tables with data              | 548                | 365             |
