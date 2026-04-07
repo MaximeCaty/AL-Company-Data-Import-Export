@@ -7,7 +7,7 @@ Use this app to copy a company across different instances, without replacing the
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
 | Multiple Company Imp/Exp | ✅         | ❌ One company at a time       |
-| Data selection  | ❌ all + include globale Y/N | ✅ per table        |
+| Data selection  | ❌ all + choose globale Y/N | ✅ per table        |
 | Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
 | UI Visibility            | ❌ freeze         | ✅ Assisted setup + threads progression |
 | Error recovery           | ❌ full rollback | ✅ Log and continues to next chunk    |
@@ -22,8 +22,8 @@ Use this app to copy a company across different instances, without replacing the
 | Tables with data              | 548                | 365             |
 | Number of records             | 43'783             | 8'662'740       |
 | Export Duration               | **5.5 s**          | **12 minutes**  |
-| Final Archive file size       | **3.5 MB**         | **357 MB**      |
-| Import Duration (OnPrem-DLL)  | **8.3 s**          | **17 minutes**  |
+| Export file size compressed   | **3.5 MB**         | **357 MB**      |
+| Import Duration (OnPrem .NET) | **8.3 s**          | **17 minutes**  |
 | Import Duration (Cloud)       | 10.5 s             | 53 minutes      |
 
 
@@ -143,12 +143,12 @@ Archive.zip/
 
 ### How data is encoded
 
-All business central data are written in binary format, allowing faster parsing and smaller files than text based data such as CSV. 
+The data is written in binary format, allowing faster parsing and smaller files than text based data such as CSV. 
 
 **Binaries streams only contain table data**, without any headers or separators. 
 
- - Row-oriented — used for small tables (< 100 rows); simple and low-overhead, sequencial per record then per field loop.
- - Column-oriented — used for larger tables (≥ 100 rows); better compression ratio, faster imports, reduce size skipping empty columns (detected based on BC default values comparisons)
+ - Row-oriented — used for small tables (< 100 rows); simple and low-overhead.
+ - Column-oriented — used for larger tables (≥ 100 rows); better compression ratio, faster imports, skipping empty columns to further reduce size (detected based on BC default values comparisons)
    - Compressed TAR archive, containing each column as separate stream + json with columns definitions
  - MD5 hash verification after each file decompressed to ensure integrity
 
