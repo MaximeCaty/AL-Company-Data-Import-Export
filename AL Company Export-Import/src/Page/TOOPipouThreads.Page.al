@@ -4,6 +4,7 @@ page 51020 "TOO Pipou Threads"
     PageType = ListPart;
     SourceTable = "TOO Pipou Thread";
     Editable = false;
+    ApplicationArea = All;
 
     layout
     {
@@ -64,12 +65,13 @@ page 51020 "TOO Pipou Threads"
         end;
     end;
 
+
     procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
     var
         i: Integer;
         ProgressChar: Integer;
     begin
-        ProgressChar := Round(ProgressPercent * 24, 1, '<') + 1;
+        ProgressChar := Round(ProgressPercent * 12, 1, '<') + 1;
         for i := 1 to 12 do begin
             if i < ProgressChar then
                 AsciiResult += '▰'
@@ -80,7 +82,6 @@ page 51020 "TOO Pipou Threads"
                     AsciiResult += '▱';
         end;
     end;
-
 
     var
         ThreadProgressBar: Text[20];

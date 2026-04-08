@@ -5,6 +5,7 @@ page 51019 "TOO Pipou Import Tables Sub"
     InsertAllowed = false;
     DeleteAllowed = false;
     Caption = 'Tables to Import';
+    ApplicationArea = All;
 
     layout
     {

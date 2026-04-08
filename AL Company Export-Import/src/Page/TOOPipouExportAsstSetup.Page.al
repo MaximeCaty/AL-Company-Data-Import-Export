@@ -309,8 +309,8 @@ page 51008 "TOO Pipou Export Asst. Setup"
                     PressedExport := true;
                     StartExport();
                     Rec.SetRange("Archive ID", TempArchive."Archive ID");
-                    Rec.FindFirst();
-                    Page.Run(Page::"TOO Pipou Archives", Rec);
+                    if Rec.FindFirst() then
+                        Page.Run(Page::"TOO Pipou Archive Card", Rec);
                     CurrPage.Close();
                 end;
             }
@@ -365,9 +365,10 @@ page 51008 "TOO Pipou Export Asst. Setup"
     begin
         if (step = 6) and PressedExport then begin
             Rec.SetRange("Archive ID", TempArchive."Archive ID");
-            Rec.FindFirst();
-            Page.Run(Page::"TOO Pipou Archive Card", Rec);
-            CurrPage.Close();
+            if Rec.FindFirst() then begin
+                Page.RunModal(Page::"TOO Pipou Archive Card", Rec);
+                CurrPage.Close();
+            end;
         end;
     end;
 
@@ -635,6 +636,8 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Rec.Get(Rec."Archive Name", Rec."Archive ID");
         if Rec."No. Files" = 0 then
             Error(NothingToExport);
+
+        PressedExport := false; // disable catching dialog closed
 
         // Download
         Rec.DownloadArchiveFile();

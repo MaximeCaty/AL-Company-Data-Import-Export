@@ -4,7 +4,8 @@ page 51021 "TOO Pipou Archive Card"
     SourceTable = "TOO Pipou Archive";
     ModifyAllowed = false;
     InsertAllowed = false;
-    Caption = 'Pipou Archive';
+    Caption = 'Company Data Archive';
+    ApplicationArea = All;
 
     layout
     {
@@ -79,8 +80,6 @@ page 51021 "TOO Pipou Archive Card"
             }
             group(Threads)
             {
-                Visible = IsProcessing;
-
                 field("Process Status"; Rec."Process Status")
                 {
                     Editable = false;
@@ -99,10 +98,6 @@ page 51021 "TOO Pipou Archive Card"
                         ApplicationArea = all;
                     }
                     field("Import Use SQL Bulk"; Rec."Import Use SQL Bulk")
-                    {
-                        ApplicationArea = All;
-                    }
-                    field("Import Warning / Error"; Rec."Import Warning / Error")
                     {
                         ApplicationArea = All;
                     }
@@ -169,12 +164,11 @@ page 51021 "TOO Pipou Archive Card"
 
                 field(GlobalProgressBar; GlobalProgressBar)
                 {
-                    Caption = 'Progression total';
+                    Caption = 'Progression';
                     Editable = false;
                     Width = 25;
                     ColumnSpan = 2;
                 }
-
                 field(GlobalEstRemDuration; GlobalEstRemDuration)
                 {
                     Caption = 'Estimated Remaining Duration';
@@ -186,12 +180,16 @@ page 51021 "TOO Pipou Archive Card"
                     Caption = 'Avg. Rec/S';
                     Editable = false;
                 }
+                field("Import Warning / Error"; Rec."Import Warning / Error")
+                {
+                    Editable = false;
+                    BlankZero = true;
+                    Style = Unfavorable;
+                }
             }
             group(ThreadsPart)
             {
                 ShowCaption = false;
-                Visible = IsProcessing;
-
                 part(ThreadsList; "TOO Pipou Threads")
                 {
                     SubPageLink = "Archive ID" = field("Archive ID");
@@ -204,7 +202,7 @@ page 51021 "TOO Pipou Archive Card"
 
                 trigger AddinReady()
                 begin
-                    CurrPage.PageAutoRefreshAddin.Run(2500);
+                    CurrPage.PageAutoRefreshAddin.Run(1000);
                 end;
 
                 trigger Refresh()
@@ -228,7 +226,7 @@ page 51021 "TOO Pipou Archive Card"
                                 Rec.DownloadArchiveFile();
                         end;
                     end else
-                        CurrPage.PageAutoRefreshAddin.Run(2500);
+                        CurrPage.PageAutoRefreshAddin.Run(1000);
                     CurrPage.Update(false);
                 end;
             }
@@ -337,15 +335,15 @@ page 51021 "TOO Pipou Archive Card"
     begin
         if IsProcessing then begin
             // Progress bar
-            Threads.CalcSums("Total Rec. Proceed");
-            if Rec."Total Records" > 0 then
-                GlobalProgress := (Threads."Total Rec. Proceed" / Rec."Total Records")
+            Threads.SetRange("Archive ID", Rec."Archive ID");
+            Threads.CalcSums("Total Rec. Proceed", "Total Rec. To Process");
+            if Threads."Total Rec. To Process" > 0 then
+                GlobalProgress := (Threads."Total Rec. Proceed" / Threads."Total Rec. To Process")
             else
                 GlobalProgress := 0;
             GlobalProgressBar := ProgressBar(GlobalProgress);
 
             // Remaining Duration
-            Threads.CalcSums("Total Rec. Proceed");
             if (GlobalProgress > 0) and (Threads."Total Rec. Proceed" > 1000) then begin
                 ElapsedTime := Round(CurrentDateTime - Rec."Process Started At", 1000);
                 RemProgress := (1 - GlobalProgress) / GlobalProgress;
@@ -373,7 +371,7 @@ page 51021 "TOO Pipou Archive Card"
         i: Integer;
         ProgressChar: Integer;
     begin
-        ProgressChar := Round(ProgressPercent * 24, 1, '<') + 1;
+        ProgressChar := Round(ProgressPercent * 12, 1, '<') + 1;
         for i := 1 to 12 do begin
             if i < ProgressChar then
                 AsciiResult += '▰'

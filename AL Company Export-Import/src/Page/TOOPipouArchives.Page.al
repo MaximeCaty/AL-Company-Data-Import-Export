@@ -3,11 +3,11 @@ page 51007 "TOO Pipou Archives"
     Caption = 'Company Data Archives';
     PageType = List;
     UsageCategory = Lists;
-    ApplicationArea = All;
     SourceTable = "TOO Pipou Archive";
     ModifyAllowed = false;
     InsertAllowed = false;
     CardPageId = "TOO Pipou Archive Card";
+    ApplicationArea = All;
 
     layout
     {

@@ -6,6 +6,7 @@ page 51000 "TOO Pipou Export Fields"
     ModifyAllowed = false;
     Caption = 'Tables Fields';
     SourceTableTemporary = true;
+    ApplicationArea = All;
 
     layout
     {

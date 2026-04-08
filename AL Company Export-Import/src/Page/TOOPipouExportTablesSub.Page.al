@@ -5,6 +5,7 @@ page 51011 "TOO Pipou Export Tables Sub"
     InsertAllowed = false;
     Caption = 'Tables to export';
     SourceTableTemporary = true;
+    ApplicationArea = All;
 
     layout
     {

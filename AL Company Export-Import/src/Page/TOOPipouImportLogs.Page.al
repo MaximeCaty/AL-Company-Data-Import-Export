@@ -4,6 +4,7 @@ page 51006 "TOO Pipou Import Logs"
     SourceTable = "TOO Pipou Import Log";
     ModifyAllowed = False;
     InsertAllowed = false;
+    ApplicationArea = All;
 
     layout
     {

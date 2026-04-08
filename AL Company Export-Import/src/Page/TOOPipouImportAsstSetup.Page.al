@@ -324,7 +324,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
                 begin
                     PressedImport := true;
                     StartImport();
-                    Page.Run(Page::"TOO Pipou Archive Card", Rec);
                     CurrPage.Close();
                 end;
             }
@@ -376,7 +375,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
     begin
         if (step = 5) and PressedImport then begin
             if Archive.Get(Rec."Archive Name", Rec."Archive ID") then begin
-                Page.Run(Page::"TOO Pipou Archive Card", Archive);
+                Page.RunModal(Page::"TOO Pipou Archive Card", Archive);
                 CurrPage.Close();
             end;
         end;
@@ -508,6 +507,7 @@ page 51018 "TOO Pipou Import Asst. Setup"
             Page.Run(Page::"TOO Pipou Archive Card", Rec);
             CurrPage.Close();
         end;*/
+        PressedImport := false; // disable catching dialog closed
     end;
     #endregion
 

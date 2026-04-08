@@ -5,6 +5,7 @@ page 51010 "TOO Pipou Archive Fields"
     InsertAllowed = false;
     DeleteAllowed = false;
     Caption = 'Pipou Archive Tables Fields';
+    ApplicationArea = All;
 
     layout
     {
