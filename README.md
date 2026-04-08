@@ -1,7 +1,9 @@
+.App can be found under [release folder here.](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)  
+If you're happy with it and on-prem, git a try to the on-prem+dll version that offer faster import and better compression.
 
 # AL Company Data-Import-Export
 
-Offer Business Central replacement for legacy NAV "Import / Export Data File".
+Offer Business Central replacement for legacy NAV "Import / Export Data File".  
 Use this app to copy a company across different instances, without replacing the whole database, or migrate schema differences.
 
 | Feature                  | Legacy NAV | This extension                  |
@@ -16,7 +18,7 @@ Use this app to copy a company across different instances, without replacing the
 
 ### Performance Sample
 
-|                               | Cronus W1 23.18    | Company with 1Y intensive activities |
+|                               | Cronus W1          | Misc. Company |
 |-------------------------------|--------------------|--------------------------------------|
 | Database MDF disk size        | 1 GB               | 45 GB           |
 | Tables with data              | 548                | 365             |
@@ -156,11 +158,9 @@ The data is written in binary format, allowing faster parsing and smaller files 
  
 ### Table chunking
 
-A size limit is fixed per file in order to limit RAM usage, and distribute database comits.
-When a stream reach the size limit, the file is closed, compressed and a new stream begin for ongoing records.
-
-Note that using Libbsc compression require much free RAM : ~5x the file size, multiplied by threads.
-
+A size limit is fixed per file in order to limit RAM usage, and distribute database comits.  
+When a stream reach the size limit, the file is closed, compressed and a new stream begin for ongoing records.  
+Note that using Libbsc compression require much free RAM : ~5x the file size, multiplied by threads.  
 When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
 
 
