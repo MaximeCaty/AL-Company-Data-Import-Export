@@ -53,7 +53,8 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         Archive.TestField("Number of Threads");
         Archive.CalcFields("No. Tables");
         Archive.TestField("No. Tables");
-        Archive.TestField("Process Status", Archive."Process Status"::" ");
+        if Archive."Process Status" = Archive."Process Status"::"⌛ Importing" then
+            Archive.TestField("Process Status", Archive."Process Status"::" ");
         Archive.TestField("Import Destination Company");
         if (Archive."Number of Threads" < 1) or (Archive."Number of Threads" > 6) then
             Error('The number of threads to run the process must be within 1-6 range.');
@@ -81,7 +82,7 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         Archive.Modify();
         Commit();
 
-        /*if Archive."Number of Threads" = 1 then begin
+        if Archive."Number of Threads" = 1 then begin
             // Debug purpose - foreground run
             Win.Open('Importing...');
             Thread.Get(1);
@@ -89,101 +90,101 @@ codeunit 51014 "TOO Pipou Import Multithreads"
             RecProceed := Thread."Total Rec. Proceed";
             TotFileSize := Thread."Files Size (KB)";
             Win.Close();
-        end else begin*/
-        Win.Open('Starting Threads...');
-        // Start sessions
-        Thread.Get(1);
-        StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        if Archive."Number of Threads" > 1 then begin
-            Thread.Get(2);
+        end else begin
+            Win.Open('Starting Threads...');
+            // Start sessions
+            Thread.Get(1);
             StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 2 then begin
-            Thread.Get(3);
-            StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 3 then begin
-            Thread.Get(4);
-            StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 4 then begin
-            Thread.Get(5);
-            StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 5 then begin
-            Thread.Get(6);
-            StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
-        end;
-        Win.Close();
-
-        if not Foreground then exit;
-
-        StartDT := CurrentDateTime;
-
-        // Monitor thread until all data proceed
-        Win.Open(Progress);
-        Win.Update(1, Archive."Exported From Company");
-        DataProceed := 0;
-        while (not AllThreadCompleted) do begin
-            sleep(900);
-
-            AllThreadCompleted := true; // false if any thread not completed
-            DataProceed := 0;
-            RecProceed := 0;
-            TotFileSize := 0;
-
-            // Thread 1 :
-            ThreadTxt := ThreadHelper.UpdateThreadProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-            Win.Update(7, ThreadTxt);
-            if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            // Thread 2 :
             if Archive."Number of Threads" > 1 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-                Win.Update(8, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                Thread.Get(2);
+                StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
             end;
-            // Thread 3 :
             if Archive."Number of Threads" > 2 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-                Win.Update(9, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                Thread.Get(3);
+                StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
             end;
-            // Thread 4 :
             if Archive."Number of Threads" > 3 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-                Win.Update(10, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                Thread.Get(4);
+                StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
             end;
-            // Thread 5 :
             if Archive."Number of Threads" > 4 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-                Win.Update(11, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                Thread.Get(5);
+                StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
             end;
-            // Thread 6 :
             if Archive."Number of Threads" > 5 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
-                Win.Update(12, ThreadTxt);
+                Thread.Get(6);
+                StartSession(SessionID, Codeunit::"TOO Pipou Import Data", CompanyName, Thread);
+            end;
+            Win.Close();
+
+            if not Foreground then exit;
+
+            StartDT := CurrentDateTime;
+
+            // Monitor thread until all data proceed
+            Win.Open(Progress);
+            Win.Update(1, Archive."Exported From Company");
+            DataProceed := 0;
+            while (not AllThreadCompleted) do begin
+                sleep(900);
+
+                AllThreadCompleted := true; // false if any thread not completed
+                DataProceed := 0;
+                RecProceed := 0;
+                TotFileSize := 0;
+
+                // Thread 1 :
+                ThreadTxt := ThreadHelper.UpdateThreadUIProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                Win.Update(7, ThreadTxt);
                 if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
+                // Thread 2 :
+                if Archive."Number of Threads" > 1 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    Win.Update(8, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 3 :
+                if Archive."Number of Threads" > 2 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    Win.Update(9, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 4 :
+                if Archive."Number of Threads" > 3 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    Win.Update(10, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 5 :
+                if Archive."Number of Threads" > 4 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    Win.Update(11, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 6 :
+                if Archive."Number of Threads" > 5 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    Win.Update(12, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
 
-            // Global progression
-            GlobalProgress := (RecProceed / ArchTotalRecToImport);
-            Win.Update(4, PipouMgt.ProgressBar(GlobalProgress));
-            Win.Update(6, Format(RecProceed) + ' / ' + Format(Archive."Total Records"));
+                // Global progression
+                GlobalProgress := (RecProceed / ArchTotalRecToImport);
+                Win.Update(4, PipouMgt.ProgressBar(GlobalProgress));
+                Win.Update(6, Format(RecProceed) + ' / ' + Format(Archive."Total Records"));
 
-            // Elapsed time
-            ElapsedTime := Round(CurrentDateTime - StartDT, 1000);
-            Win.Update(2, ElapsedTime);
-            // Estimate remaining (after 0.5% progress)
-            if (GlobalProgress >= 0.005) and (ArchTotalRecToImport > 0) then begin
-                // multiply elapsed time by remaining % progression (if 25% = x3, 50% = x1, if 75% = x0.33)
-                RemProgress := (1 - GlobalProgress) / GlobalProgress;
-                // round by 10s
-                RemDuration := Round(ElapsedTime * RemProgress + 5000, 10000, '>');
-                Win.Update(3, RemDuration);
+                // Elapsed time
+                ElapsedTime := Round(CurrentDateTime - StartDT, 1000);
+                Win.Update(2, ElapsedTime);
+                // Estimate remaining (after 0.5% progress)
+                if (GlobalProgress >= 0.005) and (ArchTotalRecToImport > 0) then begin
+                    // multiply elapsed time by remaining % progression (if 25% = x3, 50% = x1, if 75% = x0.33)
+                    RemProgress := (1 - GlobalProgress) / GlobalProgress;
+                    // round by 10s
+                    RemDuration := Round(ElapsedTime * RemProgress + 5000, 10000, '>');
+                    Win.Update(3, RemDuration);
+                end;
             end;
-            //end;
         end;
         // Finished
     end;

@@ -281,6 +281,13 @@ codeunit 51009 "TOO Pipou Import Data"
         clear(CompressedInstr); // free ram from original compressed stream
         #endregion
 
+        // Prepare columns streams
+        if ArchiveFile."Column Storage" then
+            for I := 1 to FieldMatchedCount do
+                if not FieldsMatchedColumnEmpty[I] then
+                    if not ColStoreMgt.GetOriginalfieldIDColumnInStr(FieldsOriginalIDList[FieldsMatchedOriginalIndex[i]], MatchedDataColInStream[I]) then
+                        FieldsMatchedColumnEmpty[I] := true; // column not found
+
         #region SQL columns
 #if ONPREM
         // Prepare SQL Bulk
@@ -304,12 +311,6 @@ codeunit 51009 "TOO Pipou Import Data"
         RecordRef.Open(ArchiveFile."Matched Table ID", false, Archive."Import Destination Company");
 #endif
         #endregion
-
-        // Prepare columns streams
-        if ArchiveFile."Column Storage" then
-            for I := 1 to FieldMatchedCount do
-                if not FieldsMatchedColumnEmpty[I] then
-                    ColStoreMgt.GetOriginalfieldIDColumnInStr(FieldsOriginalIDList[FieldsMatchedOriginalIndex[i]], MatchedDataColInStream[I]);
 
         #region Parse Records
         Thread.Status := Thread.Status::"Importing Data";

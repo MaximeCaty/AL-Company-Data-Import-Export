@@ -64,7 +64,7 @@ codeunit 51005 "TOO Pipou Export Data"
         Archive.Modify();
         Commit();
 
-        /*if Archive."Number of Threads" = 1 then begin
+        if Archive."Number of Threads" = 1 then begin
             // Debug purpose - foreground run
             Win.Open('Exporting...');
             Thread.Get(1);
@@ -73,102 +73,103 @@ codeunit 51005 "TOO Pipou Export Data"
             TotFileSize := Thread."Files Size (KB)";
             TotCompSize := Thread."Files Compressed Size (KB)";
             Win.Close();
-        end else begin*/
-        Win.Open('Starting Threads...');
-        // Start sessions
-        Thread.Get(1);
-        StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
-        if Archive."Number of Threads" > 1 then begin
-            Thread.Get(2);
+        end else begin
+            Win.Open('Starting Threads...');
+            // Start sessions
+            Thread.Get(1);
             StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 2 then begin
-            Thread.Get(3);
-            StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 3 then begin
-            Thread.Get(4);
-            StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 4 then begin
-            Thread.Get(5);
-            StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
-        end;
-        if Archive."Number of Threads" > 5 then begin
-            Thread.Get(6);
-            StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            if Archive."Number of Threads" > 1 then begin
+                Thread.Get(2);
+                StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            end;
+            if Archive."Number of Threads" > 2 then begin
+                Thread.Get(3);
+                StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            end;
+            if Archive."Number of Threads" > 3 then begin
+                Thread.Get(4);
+                StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            end;
+            if Archive."Number of Threads" > 4 then begin
+                Thread.Get(5);
+                StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            end;
+            if Archive."Number of Threads" > 5 then begin
+                Thread.Get(6);
+                StartSession(SessionID, Codeunit::"TOO Pipou Export Data", CompanyName, Thread);
+            end;
+            Win.Close();
+
+            StartDT := CurrentDateTime;
+
+            // Monitor thread until all data proceed
+            Win.Open(Progress);
+            Win.Update(1, Archive."Exported From Company");
+
+            while (not AllThreadCompleted) do begin
+                sleep(900);
+
+                AllThreadCompleted := true; // false if any thread not completed
+                RecProceed := 0;
+                TotFileSize := 0;
+                TotCompSize := 0;
+
+                // Thread 1 :
+                ThreadTxt := ThreadHelper.UpdateThreadUIProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                Win.Update(8, ThreadTxt);
+                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+
+                // Thread 2 :
+                if Archive."Number of Threads" > 1 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                    Win.Update(9, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 3 :
+                if Archive."Number of Threads" > 2 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                    Win.Update(10, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 4 :
+                if Archive."Number of Threads" > 3 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                    Win.Update(11, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 5 :
+                if Archive."Number of Threads" > 4 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                    Win.Update(12, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+                // Thread 6 :
+                if Archive."Number of Threads" > 5 then begin
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
+                    Win.Update(13, ThreadTxt);
+                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                end;
+
+                // Global progression
+                GlobalProgress := ((RecProceed / ArchTotalRecSize) + (RecProceed / Archive."Total Records")) / 2;
+                Win.Update(4, PipouMgt.ProgressBar(GlobalProgress));
+                Win.Update(6, Format(RecProceed) + ' / ' + Format(Archive."Total Records"));
+                Win.Update(7, Format(Round(TotCompSize, 1)));
+
+                // Elapsed time
+                ElapsedTime := Round(CurrentDateTime - StartDT, 1000);
+                Win.Update(2, ElapsedTime);
+                // Estimate remaining (after 1% progress)
+                if (GlobalProgress >= 0.01) and (ArchTotalRecSize > 0) then begin
+                    // multiply elapsed time by remaining % progression (if 25% = x3, 50% = x1, if 75% = x0.33)
+                    RemProgress := (1 - GlobalProgress) / GlobalProgress;
+                    // round by 10s
+                    RemDuration := Round(ElapsedTime * RemProgress + 5000, 10000, '>');
+                    Win.Update(3, RemDuration);
+                end;
+            end;
         end;
         Win.Close();
-
-        StartDT := CurrentDateTime;
-
-        // Monitor thread until all data proceed
-        Win.Open(Progress);
-        Win.Update(1, Archive."Exported From Company");
-
-        while (not AllThreadCompleted) do begin
-            sleep(900);
-
-            AllThreadCompleted := true; // false if any thread not completed
-            RecProceed := 0;
-            TotFileSize := 0;
-            TotCompSize := 0;
-
-            // Thread 1 :
-            ThreadTxt := ThreadHelper.UpdateThreadProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-            Win.Update(8, ThreadTxt);
-            if ErrorThrown then ThrowError(Archive, ErrorMessage);
-
-            // Thread 2 :
-            if Archive."Number of Threads" > 1 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-                Win.Update(9, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
-            // Thread 3 :
-            if Archive."Number of Threads" > 2 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-                Win.Update(10, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
-            // Thread 4 :
-            if Archive."Number of Threads" > 3 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-                Win.Update(11, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
-            // Thread 5 :
-            if Archive."Number of Threads" > 4 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-                Win.Update(12, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
-            // Thread 6 :
-            if Archive."Number of Threads" > 5 then begin
-                ThreadTxt := ThreadHelper.UpdateThreadProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
-                Win.Update(13, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
-            end;
-
-            // Global progression
-            GlobalProgress := ((RecProceed / ArchTotalRecSize) + (RecProceed / Archive."Total Records")) / 2;
-            Win.Update(4, PipouMgt.ProgressBar(GlobalProgress));
-            Win.Update(6, Format(RecProceed) + ' / ' + Format(Archive."Total Records"));
-            Win.Update(7, Format(Round(TotCompSize, 1)));
-
-            // Elapsed time
-            ElapsedTime := Round(CurrentDateTime - StartDT, 1000);
-            Win.Update(2, ElapsedTime);
-            // Estimate remaining (after 1% progress)
-            if (GlobalProgress >= 0.01) and (ArchTotalRecSize > 0) then begin
-                // multiply elapsed time by remaining % progression (if 25% = x3, 50% = x1, if 75% = x0.33)
-                RemProgress := (1 - GlobalProgress) / GlobalProgress;
-                // round by 10s
-                RemDuration := Round(ElapsedTime * RemProgress + 5000, 10000, '>');
-                Win.Update(3, RemDuration);
-            end;
-        end;
-        //end;
         // Finished
     end;
 
@@ -297,7 +298,7 @@ codeunit 51005 "TOO Pipou Export Data"
         FieldRefArr: array[500] of FieldRef;
     begin
         // Ignore export of it self
-        if Table."Table ID" IN [Database::"TOO Pipou Archive Files", Database::"TOO Pipou Archive", database::"TOO Pipou Import Log"] then
+        if Table."Table ID" IN [Database::"TOO Pipou Archive Files", Database::"TOO Pipou Archive", database::"TOO Pipou Import Log", database::"TOO Pipou Archive Fields", database::"TOO Pipou Archive Tables", database::"TOO Pipou Thread"] then
             exit;
 
         // Open Record
@@ -355,65 +356,129 @@ codeunit 51005 "TOO Pipou Export Data"
             CreateChunk(Archive, EnableColStore, Table, TableChunkNo, 0, FieldsCount);
             case EnableColStore of
                 true:
-                    repeat
-                        // Chunk/Progress handling (every 1000 Rec)
-                        if (UnCheckedPos >= 1000) then begin
-                            TableRecPos += UnCheckedPos;
-                            ThreadRecProceed += UnCheckedPos;
-                            UnCheckedPos := 0;
+                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then begin
+                        // COLUMN ORIENTED + KEEP ALL
+                        repeat
+                            // Chunk/Progress handling (every 500 Rec + every 1s)
+                            if (UnCheckedPos >= 500) then begin
+                                TableRecPos += UnCheckedPos;
+                                ThreadRecProceed += UnCheckedPos;
+                                UnCheckedPos := 0;
 
-                            // Thread progression (Time based)
-                            if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
-                                UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), TableRecPos);
-                                LastThreadUpdateDT := CurrentDateTime;
+                                // Thread progression (Time based)
+                                if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
+                                    UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), ThreadRecProceed);
+                                    LastThreadUpdateDT := CurrentDateTime;
+                                end;
+                                // Chunk Max Size check
+                                if CheckChunkMaxSizeForClosure(Archive."Chunk Max Size", FieldsCount, EnableColStore) then begin
+                                    CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
+                                    TableChunkNo += 1;
+                                    CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+                                end;
                             end;
-                            // Chunk Max Size check
-                            if CheckChunkMaxSizeForClosure(Archive, FieldsCount, EnableColStore) then begin
-                                CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
-                                TableChunkNo += 1;
-                                CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+
+                            // Fields
+                            for I := 1 to FieldsCount do
+                                if not PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
+                                    FieldAllEmpty[I] := false;
+
+                            UnCheckedPos += 1;
+                        until RecRef.Next() = 0;
+                    end else
+                        // COLUMN ORIENTED + NOT CLASSIFIED
+                        repeat
+                            // Chunk/Progress handling (every 500 Rec + every 1s)
+                            if (UnCheckedPos >= 500) then begin
+                                TableRecPos += UnCheckedPos;
+                                ThreadRecProceed += UnCheckedPos;
+                                UnCheckedPos := 0;
+
+                                // Thread progression (Time based)
+                                if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
+                                    UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), ThreadRecProceed);
+                                    LastThreadUpdateDT := CurrentDateTime;
+                                end;
+                                // Chunk Max Size check
+                                if CheckChunkMaxSizeForClosure(Archive."Chunk Max Size", FieldsCount, EnableColStore) then begin
+                                    CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
+                                    TableChunkNo += 1;
+                                    CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+                                end;
                             end;
-                        end;
 
-                        // Fields
-                        for I := 1 to FieldsCount do
-                            if FieldDataClassifed[I] then
-                                PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ColumnOutStrArr[I])
-                            else
-                                PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldAllEmpty[I], FieldRefArr[I]);
+                            // Fields
+                            for I := 1 to FieldsCount do
+                                if FieldDataClassifed[I] then
+                                    PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ColumnOutStrArr[I])
+                                else
+                                    if not PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
+                                        FieldAllEmpty[I] := false;
 
-                        UnCheckedPos += 1;
-                    until RecRef.Next() = 0;
+                            UnCheckedPos += 1;
+                        until RecRef.Next() = 0;
                 false:
-                    repeat
-                        // Chunk/Progress handling (every 1000 Rec)
-                        if (UnCheckedPos >= 1000) then begin
-                            TableRecPos += UnCheckedPos;
-                            ThreadRecProceed += UnCheckedPos;
-                            UnCheckedPos := 0;
+                    // ROW ORIENTED + KEEP ALL
+                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then begin
+                        repeat
+                            // Chunk/Progress handling (every 500 Rec + every 1s)
+                            if (UnCheckedPos >= 500) then begin
+                                TableRecPos += UnCheckedPos;
+                                ThreadRecProceed += UnCheckedPos;
+                                UnCheckedPos := 0;
 
-                            // Thread progression (Time based)
-                            if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
-                                UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), TableRecPos);
-                                LastThreadUpdateDT := CurrentDateTime;
+                                // Thread progression (Time based)
+                                if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
+                                    UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), ThreadRecProceed);
+                                    LastThreadUpdateDT := CurrentDateTime;
+                                end;
+                                // Chunk Max Size check
+                                if CheckChunkMaxSizeForClosure(Archive."Chunk Max Size", FieldsCount, EnableColStore) then begin
+                                    CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
+                                    TableChunkNo += 1;
+                                    CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+                                end;
                             end;
-                            // Chunk Max Size check
-                            if CheckChunkMaxSizeForClosure(Archive, FieldsCount, EnableColStore) then begin
-                                CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
-                                TableChunkNo += 1;
-                                CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+
+                            // Fields
+                            for I := 1 to FieldsCount do
+                                if not PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
+                                    FieldAllEmpty[I] := false;
+
+                            UnCheckedPos += 1;
+                        until RecRef.Next() = 0;
+                    end else
+                        // ROW ORIENTED + NOT CLASSIFIED
+                        repeat
+                            // Chunk/Progress handling (every 500 Rec + every 1s)
+                            if (UnCheckedPos >= 500) then begin
+                                TableRecPos += UnCheckedPos;
+                                ThreadRecProceed += UnCheckedPos;
+                                UnCheckedPos := 0;
+
+                                // Thread progression (Time based)
+                                if CurrentDateTime - LastThreadUpdateDT > 1000 then begin
+                                    UpdateThreadProgress(Thread, Table."Table Name", round(TableRecPos / Table."No. of Records" * 100, 1, '<'), ThreadRecProceed);
+                                    LastThreadUpdateDT := CurrentDateTime;
+                                end;
+                                // Chunk Max Size check
+                                if CheckChunkMaxSizeForClosure(Archive."Chunk Max Size", FieldsCount, EnableColStore) then begin
+                                    CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
+                                    TableChunkNo += 1;
+                                    CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
+                                end;
                             end;
-                        end;
 
-                        // Fields
-                        for I := 1 to FieldsCount do
-                            if FieldDataClassifed[I] then
-                                PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ChunkOutStr)
-                            else
-                                PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldAllEmpty[I], FieldRefArr[I]);
+                            // Fields
+                            for I := 1 to FieldsCount do
+                                if FieldDataClassifed[I] then
+                                    PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ChunkOutStr)
+                                else
+                                    if not PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
+                                        FieldAllEmpty[I] := false;
 
-                        UnCheckedPos += 1;
-                    until RecRef.Next() = 0;
+                            UnCheckedPos += 1;
+                        until RecRef.Next() = 0;
             end;
             TableRecPos += UnCheckedPos;
             ThreadRecProceed += UnCheckedPos;
@@ -460,19 +525,17 @@ codeunit 51005 "TOO Pipou Export Data"
     #endregion
 
     #region Close Chunks
-    local procedure CheckChunkMaxSizeForClosure(var Archive: Record "TOO Pipou Archive"; FieldsCount: Integer; EnableColStore: Boolean): Boolean
+    local procedure CheckChunkMaxSizeForClosure(var ChunkMaxSize: integer; FieldsCount: Integer; EnableColStore: Boolean): Boolean
     var
-        CurrFileSize: Integer;
-        I: Integer;
+        CurrFileSize, I : Integer;
     begin
         if EnableColStore then begin
-            CurrFileSize := 0;
             for I := 1 to FieldsCount do
                 CurrFileSize += ColumnBlobArr[I].Length();
         end else
             CurrFileSize := TempBlobChunk.Length();
 
-        exit(CurrFileSize > Archive."Chunk Max Size");
+        exit(CurrFileSize > ChunkMaxSize);
     end;
 
     local procedure CloseChunk(var Thread: Record "TOO Pipou Thread"; var Archive: Record "TOO Pipou Archive"; EnableTranspose: Boolean; var Table: Record "TOO Pipou Archive Tables"; FieldsCount: Integer; var FieldIDList: array[500] of Integer; FieldAllEmpty: array[500] of Boolean; EndIndex: Integer)
@@ -497,32 +560,29 @@ codeunit 51005 "TOO Pipou Export Data"
         //////// COLUMN ORIENTED STORAGE ////////
         if EnableTranspose then begin
 
-            // Set archive file info
-            for I := 1 to FieldsCount do
-                if not FieldAllEmpty[I] then
-                    ArchiveFile."Uncompressed Length" += ColumnBlobArr[I].Length();
             ArchiveFile."Column Storage" := true;
-
             ColStoreMgt.CreateColStore();
 
-            // COLSTORE COMPRESSION
             // Write each column
             for I := 1 to FieldsCount do begin
                 if not FieldAllEmpty[I] then begin
                     Tablefields.Get(Archive."Archive ID", Table."Table ID", FieldIDList[I]);
                     ColStoreMgt.AddColumn(Archive, ArchiveFile, Tablefields, ColumnBlobArr[I]);
                 end;
-                clear(ColumnBlobArr[I]);
+                clear(ColumnBlobArr[I]); // free RAM gradualy
             end;
-            ColStoreMgt.ReadColStore(InStr);
-            ArchiveFile.Data.CreateOutStream(OutStr);
 
-            // Hash uncompressed signature for integrity check
+            // Create the file
+            ColStoreMgt.WriteColstoreTo(InStr);
+
+            // Uncompressed signature for integrity check
             ArchiveFile."Uncompressed MD5 Hash" := Hash.GenerateHash(InStr, HashAlgorithmType::MD5);
             InStr.ResetPosition();
+            ArchiveFile."Uncompressed Length" := InStr.Length();
 
             // Compress whole colstore file
             ArchiveFile."Compression Mode" := DetectBestCompression(Archive, InStr);
+            ArchiveFile.Data.CreateOutStream(OutStr);
             AdvCompress.Compress(InStr, OutStr, ArchiveFile."Compression Mode");
 
             // Free ram
@@ -567,15 +627,13 @@ codeunit 51005 "TOO Pipou Export Data"
         ArchiveFile.Insert(false);
 
         // Update meta about empty columns
-        I := 1;
-        repeat
+        for I := 1 to FieldsCount do begin
             if FieldAllEmpty[I] then begin
                 Tablefields.Get(Archive."Archive ID", Table."Table ID", FieldIDList[I]);
                 Tablefields."Empty In Chunks List" += Format(TableChunkNo) + ',';
                 Tablefields.Modify();
             end;
-            I += 1;
-        until I > FieldsCount;
+        end;
 
         // Update thread progression
         Thread."Files Compressed Size (KB)" += ArchiveFile."Compressed Length" / 1024;

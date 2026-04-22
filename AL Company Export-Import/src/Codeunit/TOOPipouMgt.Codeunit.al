@@ -166,74 +166,74 @@ codeunit 51004 "TOO Pipou Mgt."
     end;
 
     #region Write Bin
-    procedure WriteFieldBinaryData(var OutStr: OutStream; var FieldIsEmpty: Boolean; FieldRef: FieldRef)
+    procedure WriteFieldBinaryData(var OutStr: OutStream; FieldRef: FieldRef): Boolean // return if value is undefined/default value (true) or (false)
     begin
         case FieldRef.Type of
 
             FieldRef.Type::BLOB:
                 begin
                     if BlobMgt.ExportBlobFieldBinary(FieldRef, OutStr, BlobMaxSize) > 0 then
-                        FieldIsEmpty := false;
+                        exit(false);
                 end;
 
             FieldRef.Type::Media:
                 begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
                     BlobMgt.ExportMediaFieldBinary(FieldRef.Value, OutStr);
+                    exit(IsNullGuid(FieldRef.Value));
                 end;
 
             FieldRef.Type::MediaSet:
                 begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
                     BlobMgt.ExportMediaSetFieldBinary(FieldRef.Value, OutStr);
+                    exit(IsNullGuid(FieldRef.Value));
                 end;
 
             FieldRef.Type::Text:
                 begin
-                    if FieldRef.Value <> DefTextFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefTextFieldRef.Value);
                 end;
 
             FieldRef.Type::Code:
                 begin
-                    if FieldRef.Value <> DefCodeFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefCodeFieldRef.Value);
                 end;
 
             FieldRef.Type::DateFormula:
                 begin
-                    if FieldRef.Value <> DefDateFormulaFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(format(FieldRef.Value, 0, 9));
+                    exit(FieldRef.Value = DefDateFormulaFieldRef.Value);
                 end;
 
             FieldRef.Type::RecordId:
                 begin
-                    if FieldRef.Value <> DefRecIDFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(format(FieldRef.Value, 0, 9));
+                    exit(FieldRef.Value = DefRecIDFieldRef.Value);
                 end;
 
             FieldRef.Type::Duration:
                 begin
-                    if FieldRef.Value <> DefDurFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value <> DefDurFieldRef.Value);
                 end;
 
             FieldRef.Type::Time:
                 begin
-                    if FieldRef.Value <> DefTimeFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefTimeFieldRef.Value);
                 end;
 
             FieldRef.Type::Date:
                 begin
-                    if FieldRef.Value <> DefDateFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDateFieldRef.Value);
                 end;
 
             FieldRef.Type::DateTime:
                 begin
-                    if FieldRef.Value <> DefDateTimeFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDateTimeFieldRef.Value);
                 end;
 
             FieldRef.Type::Boolean:
@@ -241,7 +241,7 @@ codeunit 51004 "TOO Pipou Mgt."
                     EvalBool := FieldRef.Value;
                     if EvalBool then begin
                         OutStr.Write(OneByte);
-                        FieldIsEmpty := false;
+                        exit(false);
                     end else
                         OutStr.Write(ZeroByte);
                 end;
@@ -249,26 +249,26 @@ codeunit 51004 "TOO Pipou Mgt."
             FieldRef.Type::Option,
             FieldRef.Type::Integer:
                 begin
-                    if FieldRef.Value <> DefIntFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefIntFieldRef.Value);
                 end;
 
             FieldRef.Type::BigInteger:
                 begin
-                    if FieldRef.Value <> DefBigIntFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefBigIntFieldRef.Value);
                 end;
 
             FieldRef.Type::Decimal:
                 begin
-                    if FieldRef.Value <> DefDecFieldRef.Value then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDecFieldRef.Value);
                 end;
 
             FieldRef.Type::Guid:
                 begin
-                    if not IsNullGuid(FieldRef.Value) then FieldIsEmpty := false;
                     OutStr.Write(FieldRef.Value);
+                    exit(IsNullGuid(FieldRef.Value));
                 end else
                         Error('Field type unsupported for binary writting : %1', FieldRef.Type); // Unknown data type ?
         end;
@@ -523,83 +523,6 @@ codeunit 51004 "TOO Pipou Mgt."
                 InStr.Read(TextData);
                 FieldRef.Value := TextData;
             end;
-        end;
-    end;
-    #endregion
-
-    #region Is Empty Field
-    procedure IsEmptyValueFieldRef(var FieldRef: FieldRef): Boolean
-    begin
-        case FieldRef.Type of
-
-            FieldRef.Type::Integer,
-            fieldRef.Type::Option:
-                begin
-                    LowInt := FieldRef.Value;
-                    exit(LowInt = 0);
-                end;
-
-            FieldRef.Type::Duration,
-            FieldRef.Type::BigInteger:
-                begin
-                    EvalBigInt := FieldRef.Value;
-                    exit(EvalBigInt = 0L);
-                end;
-
-            FieldRef.Type::Decimal:
-                begin
-                    EvalDecimal := FieldRef.Value;
-                    exit(EvalDecimal = 0);
-                end;
-
-            FieldRef.Type::Text,
-            FieldRef.Type::Code:
-                begin
-                    TextData := FieldRef.Value;
-                    exit(TextData = '');
-                end;
-
-            FieldRef.Type::Date:
-                begin
-                    EvalDate := FieldRef.Value;
-                    exit(EvalDate = EmptyDate);
-                end;
-
-            FieldRef.Type::DateTime:
-                begin
-                    EvalDateTime := FieldRef.Value;
-                    exit(EvalDateTime = EmptyDateTime);
-                end;
-
-            FieldRef.Type::Time:
-                begin
-                    EvalTime := FieldRef.Value;
-                    exit(EvalTime = EmptyTime);
-                end;
-
-            FieldRef.Type::Guid:
-                begin
-                    EvalGuid := FieldRef.Value;
-                    exit(EvalGuid = EmptyGuid);
-                end;
-
-            FieldRef.Type::RecordId:
-                begin
-                    EvalRecID := FieldRef.Value;
-                    exit(EvalRecID = EmptyRecID);
-                end;
-
-            FieldRef.Type::DateFormula:
-                begin
-                    EvalDateFormula := FieldRef.Value;
-                    exit(EvalDateFormula = EmptyDateformula);
-                end;
-
-            FieldRef.Type::Boolean:
-                begin
-                    EvalBool := FieldRef.Value;
-                    exit(EvalBool = false);
-                end;
         end;
     end;
     #endregion

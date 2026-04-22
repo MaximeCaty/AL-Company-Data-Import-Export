@@ -80,16 +80,17 @@ codeunit 51013 "TOO Pipou colstore Mgt."
         InStr := ColumnInStrArr[ColumnIndex];
     end;
 
-    procedure GetOriginalfieldIDColumnInStr(OriginalFieldID: Integer; var InStr: InStream)
+    procedure GetOriginalfieldIDColumnInStr(OriginalFieldID: Integer; var InStr: InStream): Boolean
     var
         i: Integer;
     begin
         for i := 1 to ColCount do
             if ColumnOriginalFieldID[i] = OriginalFieldID then begin
                 InStr := ColumnInStrArr[i];
-                exit;
+                exit(true);
             end;
-        Error('The original Field %1 column were not found in the colstore file.', OriginalFieldID);
+        exit(false);
+        //Error('The original Field %1 column were not found in the colstore file.', OriginalFieldID);
     end;
 
     procedure CoumnCount(): Integer
@@ -181,7 +182,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
         Clear(ColumnBlob);
     end;
 
-    procedure ReadColStore(var InStream: InStream)
+    procedure WriteColstoreTo(var InStream: InStream)
     begin
         WriteColumnMetadata();
         TarMgt.SaveTarArchive(InStream);
