@@ -1,5 +1,6 @@
 page 51019 "TOO Pipou Import Tables Sub"
 {
+    ApplicationArea = All;
     PageType = ListPart;
     SourceTable = "TOO Pipou Archive Tables";
     InsertAllowed = false;
