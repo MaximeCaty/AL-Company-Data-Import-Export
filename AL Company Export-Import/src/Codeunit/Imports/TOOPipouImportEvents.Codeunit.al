@@ -6,6 +6,11 @@ codeunit 51007 "TOO Pipou Import Events"
 
     EventSubscriberInstance = Manual;
 
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnBeforeOnDatabaseInsert, '', false, false)]
+    local procedure OnBeforeOnDatabaseInsert(var IsHandled: Boolean)
+    begin
+        IsHandled := true;
+    end;
 
     [EventSubscriber(ObjectType::Table, Database::"Contact Business Relation", OnInsertOnBeforeFindByContact, '', false, false)]
     local procedure ContactOnInsertOnBeforeFindByContact(var IsHandled: Boolean)
