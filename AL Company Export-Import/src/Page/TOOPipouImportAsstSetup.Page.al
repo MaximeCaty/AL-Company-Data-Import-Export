@@ -54,6 +54,10 @@ page 51018 "TOO Pipou Import Asst. Setup"
                     begin
                         if Rec.UploadArchiveFileDialog() then
                             ArchiveName := Rec."Archive Name";
+                        if rec."Import Use SQL Bulk" then
+                            ImportMethod := ImportMethod::"DotNet SqlBulkCopy"
+                        else
+                            ImportMethod := ImportMethod::"AL Record.Insert";
                     end;
                 }
                 field(OrLbl; OrLbl)
@@ -85,6 +89,10 @@ page 51018 "TOO Pipou Import Asst. Setup"
                         Rec.SetRange("Archive Name", ArchiveName);
                         Rec.FindFirst();
                         ArchiveName := Rec."Archive Name";
+                        if rec."Import Use SQL Bulk" then
+                            ImportMethod := ImportMethod::"DotNet SqlBulkCopy"
+                        else
+                            ImportMethod := ImportMethod::"AL Record.Insert";
 
                         // Ask to reset import ?
                         if Rec."Process Status" = Rec."Process Status"::"✅ Imported" then
@@ -124,18 +132,6 @@ page 51018 "TOO Pipou Import Asst. Setup"
                     TableRelation = Company;
                     ShowMandatory = true;
                     NotBlank = true;
-
-                    trigger OnValidate()
-                    var
-                        ChangeLogSetup: Record "Change Log Setup";
-                    begin
-                        // Verify that change log is OFF in target company
-                        if ImportMethod = ImportMethod::"AL Record.Insert" then begin
-                            ChangeLogSetup.ChangeCompany(Rec."Import Destination Company");
-                            if ChangeLogSetup.Get() then
-                                ChangeLogSetup.TestField("Change Log Activated", false);
-                        end;
-                    end;
                 }
 
                 field(DeleteData; Rec.DeleteData)
@@ -156,18 +152,9 @@ page 51018 "TOO Pipou Import Asst. Setup"
                         ToolTip = 'Specify the method used to import the datas. For OnPremise instance, SQLBulkCopy is 4-5x faster and bypass any Business Central events and trigger, and can also import audit fields.';
 
                         trigger OnValidate()
-                        var
-                            ChangeLogSetup: Record "Change Log Setup";
                         begin
                             Rec."Import Use SQL Bulk" := (ImportMethod = ImportMethod::"DotNet SqlBulkCopy");
                             Rec.Modify();
-
-                            // Verify that change log is OFF in target company
-                            if ImportMethod = ImportMethod::"AL Record.Insert" then begin
-                                ChangeLogSetup.ChangeCompany(Rec."Import Destination Company");
-                                if ChangeLogSetup.Get() then
-                                    ChangeLogSetup.TestField("Change Log Activated", false);
-                            end;
                         end;
                     }
                 }
@@ -373,6 +360,13 @@ page 51018 "TOO Pipou Import Asst. Setup"
     var
         Archive: record "TOO Pipou Archive";
     begin
+        ArchiveName := Rec."Archive Name";
+        if rec."Import Use SQL Bulk" then
+            ImportMethod := ImportMethod::"DotNet SqlBulkCopy"
+        else
+            ImportMethod := ImportMethod::"AL Record.Insert";
+
+        // Detect closing of import progress window, open the card
         if (step = 5) and PressedImport then begin
             if Archive.Get(Rec."Archive Name", Rec."Archive ID") then begin
                 Page.RunModal(Page::"TOO Pipou Archive Card", Archive);

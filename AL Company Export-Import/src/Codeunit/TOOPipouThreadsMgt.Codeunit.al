@@ -29,51 +29,51 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads."Total Rec. To Process" := Archive."Total Records";
             Threads.Insert();
         end else begin*/
-            // Multiple thread
-            // Determine data size per thread
+        // Multiple thread
+        // Determine data size per thread
 
-            // Init threads
-            for I := 1 to Archive."Number of Threads" do begin
-                Threads.Init();
-                Threads."Thread No." := I;
-                Threads."Archive ID" := Archive."Archive ID";
-                Threads."Archive Name" := Archive."Archive Name";
-                Threads."Total Rec. To Process" := 0;
-                Threads.Insert();
+        // Init threads
+        for I := 1 to Archive."Number of Threads" do begin
+            Threads.Init();
+            Threads."Thread No." := I;
+            Threads."Archive ID" := Archive."Archive ID";
+            Threads."Archive Name" := Archive."Archive Name";
+            Threads."Total Rec. To Process" := 0;
+            Threads.Insert();
+        end;
+
+        // Loop tables in decreasing size order
+        ArchiveTables.SetCurrentKey("Archive ID", "No. of Records");
+        ArchiveTables.SetAscending("No. of Records", false);
+        ArchiveTables.FindSet();
+        repeat
+            // Find thread with smallest current sum
+            MinSum := ThreadTotalRecSize[1];
+            MinThread := 1;
+            for i := 2 to Archive."Number of Threads" do begin
+                if ThreadTotalRecSize[i] < MinSum then begin
+                    MinSum := ThreadTotalRecSize[i];
+                    MinThread := i;
+                end;
             end;
 
-            // Loop tables in decreasing size order
-            ArchiveTables.SetCurrentKey("Archive ID", "No. of Records");
-            ArchiveTables.SetAscending("No. of Records", false);
-            ArchiveTables.FindSet();
+            ThreadTotalRecSize[MinThread] += ArchiveTables."No. of Records"; // table size
+
+            ArchiveTables."Affected Thread" := MinThread;
+            ArchiveTables.Modify();
+
+        until (ArchiveTables.Next() = 0);
+
+        // Update threads Size
+        Threads.Reset();
+        if Threads.FindSet(true) then
             repeat
-                // Find thread with smallest current sum
-                MinSum := ThreadTotalRecSize[1];
-                MinThread := 1;
-                for i := 2 to Archive."Number of Threads" do begin
-                    if ThreadTotalRecSize[i] < MinSum then begin
-                        MinSum := ThreadTotalRecSize[i];
-                        MinThread := i;
-                    end;
-                end;
+                Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
+                Threads.Modify();
+            until Threads.Next() = 0;
 
-                ThreadTotalRecSize[MinThread] += ArchiveTables."No. of Records"; // table size
-
-                ArchiveTables."Affected Thread" := MinThread;
-                ArchiveTables.Modify();
-
-            until (ArchiveTables.Next() = 0);
-
-            // Update threads Size
-            Threads.Reset();
-            if Threads.FindSet(true) then
-                repeat
-                    Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
-                    Threads.Modify();
-                until Threads.Next() = 0;
-        end;
         Commit(); // need to store the thread for sub sessions
-    //end;
+    end;
     #endregion
 
     #region Import Threads
@@ -115,51 +115,51 @@ codeunit 51015 "TOO Pipou Threads Mgt."
             Threads."Total Rec. To Process" := Archive."Total Records";
             Threads.Insert();
         end else begin*/
-            // Multiple thread
-            // Determine data size per thread
+        // Multiple thread
+        // Determine data size per thread
 
-            // Init threads
-            for I := 1 to Archive."Number of Threads" do begin
-                Threads.Init();
-                Threads."Thread No." := I;
-                Threads."Archive ID" := Archive."Archive ID";
-                Threads."Archive Name" := Archive."Archive Name";
-                Threads."Total Rec. To Process" := 0;
-                Threads.Insert();
+        // Init threads
+        for I := 1 to Archive."Number of Threads" do begin
+            Threads.Init();
+            Threads."Thread No." := I;
+            Threads."Archive ID" := Archive."Archive ID";
+            Threads."Archive Name" := Archive."Archive Name";
+            Threads."Total Rec. To Process" := 0;
+            Threads.Insert();
+        end;
+
+        // Loop files in decreasing size order
+        ArchiveFiles.SetCurrentKey("Archive ID", "Uncompressed Length");
+        ArchiveFiles.SetAscending("Uncompressed Length", false);
+        ArchiveFiles.FindSet();
+        repeat
+            // Find thread with smallest current sum
+            MinSum := ThreadTotalRecSize[1];
+            MinThread := 1;
+            for i := 2 to Archive."Number of Threads" do begin
+                if ThreadTotalRecSize[i] < MinSum then begin
+                    MinSum := ThreadTotalRecSize[i];
+                    MinThread := i;
+                end;
             end;
 
-            // Loop files in decreasing size order
-            ArchiveFiles.SetCurrentKey("Archive ID", "Uncompressed Length");
-            ArchiveFiles.SetAscending("Uncompressed Length", false);
-            ArchiveFiles.FindSet();
+            ArchiveTables.Get(ArchiveFiles."Archive ID", ArchiveFiles."Table ID");
+            FileTableContentPercent := ArchiveFiles."Number Of Recs" / ArchiveTables."No. of Records";
+
+            ThreadTotalRecSize[MinThread] += ArchiveFiles."Number Of Recs"; // table size 
+
+            ArchiveFiles."Affected Thread" := MinThread;
+            ArchiveFiles.Modify();
+
+        until (ArchiveFiles.Next() = 0);
+
+        // Update threads Size
+        Threads.Reset();
+        if Threads.FindSet(true) then
             repeat
-                // Find thread with smallest current sum
-                MinSum := ThreadTotalRecSize[1];
-                MinThread := 1;
-                for i := 2 to Archive."Number of Threads" do begin
-                    if ThreadTotalRecSize[i] < MinSum then begin
-                        MinSum := ThreadTotalRecSize[i];
-                        MinThread := i;
-                    end;
-                end;
-
-                ArchiveTables.Get(ArchiveFiles."Archive ID", ArchiveFiles."Table ID");
-                FileTableContentPercent := ArchiveFiles."Number Of Recs" / ArchiveTables."No. of Records";
-
-                ThreadTotalRecSize[MinThread] += ArchiveFiles."Number Of Recs"; // table size 
-
-                ArchiveFiles."Affected Thread" := MinThread;
-                ArchiveFiles.Modify();
-
-            until (ArchiveFiles.Next() = 0);
-
-            // Update threads Size
-            Threads.Reset();
-            if Threads.FindSet(true) then
-                repeat
-                    Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
-                    Threads.Modify();
-                until Threads.Next() = 0;
+                Threads."Total Rec. To Process" := ThreadTotalRecSize[Threads."Thread No."];
+                Threads.Modify();
+            until Threads.Next() = 0;
         //end;
         Commit(); // need to store the thread for sub sessions
     end;

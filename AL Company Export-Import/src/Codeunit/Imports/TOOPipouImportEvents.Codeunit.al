@@ -6,10 +6,30 @@ codeunit 51007 "TOO Pipou Import Events"
 
     EventSubscriberInstance = Manual;
 
+    var
+        ImportingRecordID: RecordId;
+
     [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnBeforeOnDatabaseInsert, '', false, false)]
     local procedure OnBeforeOnDatabaseInsert(var IsHandled: Boolean)
     begin
         IsHandled := true;
+    end;
+
+
+    procedure SetRecordID(RecID: RecordId)
+    begin
+        ImportingRecordID := RecID;
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Change Log Management", OnBeforeLogInsertion, '', false, false)]
+    local procedure OnBeforeLogInsertion(var RecRef: RecordRef)
+    begin
+        if RecRef.RecordId = ImportingRecordID then begin
+            // Ignore change log on record beeing imported
+            // change event recref as temporary (this doesnt change the real record beeing inserted tho)
+            RecRef.Close();
+            RecRef.Open(ImportingRecordID.TableNo, true);
+        end;
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"Contact Business Relation", OnInsertOnBeforeFindByContact, '', false, false)]

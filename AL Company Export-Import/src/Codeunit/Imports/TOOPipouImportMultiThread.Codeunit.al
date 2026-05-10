@@ -41,7 +41,6 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         RemProgress: Decimal;
         GlobalProgress: Decimal;
         OtherArchive: Record "TOO Pipou Archive";
-        ChangeLogSetup: Record "Change Log Setup";
         ErrorThrown: Boolean;
         ErrorMessage: Text;
         StartDT: DateTime;
@@ -60,13 +59,6 @@ codeunit 51014 "TOO Pipou Import Multithreads"
             Error('The number of threads to run the process must be within 1-6 range.');
 
         ArchTotalRecToImport := CalcArchiveTotalRecToImport(Archive);
-
-        // Verify that change log is OFF
-        if not Archive."Import Use SQL Bulk" then begin
-            ChangeLogSetup.ChangeCompany(Archive."Import Destination Company");
-            if ChangeLogSetup.Get() then
-                ChangeLogSetup.TestField("Change Log Activated", false);
-        end;
 
         // Reset other archive process state
         OtherArchive.SetFilter("Archive ID", '<>%1', Archive."Archive ID");

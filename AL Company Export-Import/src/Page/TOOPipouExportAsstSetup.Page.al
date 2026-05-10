@@ -289,10 +289,6 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
                 trigger OnAction()
                 begin
-                    if (Step = 3) and (ClassifiedDataHandling = ClassifiedDataHandling::Keep) then
-                        if not Confirm(StrSubstNo('⚠️ You have selected "%1" for classified data.\Exported data may contain sensitives informations about your contacts such as name, e-mail, phone no. and address.\ \You may want to select "Empty" or "Randomize" if you plan to share this data with someone outside of your company.\ \Continue and export sensitive data ?', ClassifiedDataHandling)) then
-                            exit;
-
                     NextStep(false);
                 end;
             }
