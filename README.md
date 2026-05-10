@@ -23,10 +23,10 @@ Use this app to copy a company across different instances, without replacing the
 | Database MDF disk size        | 1 GB               | 45 GB           |
 | Tables with data              | 548                | 365             |
 | Number of records             | 43'783             | 8'662'740       |
-| Export Duration               | **5.5 s**          | **12 minutes**  |
+| Export Duration               | **4.4 s**          | **12 minutes**  |
 | Export file size compressed   | **3.5 MB**         | **357 MB**      |
 | Import Duration (OnPrem .NET) | **8.3 s**          | **17 minutes**  |
-| Import Duration (Cloud)       | 10.5 s             | 53 minutes      |
+| Import Duration (Cloud)       | 9.3 s             | 53 minutes      |
 
 
 ### OnPrem vs SaaS Limitations
