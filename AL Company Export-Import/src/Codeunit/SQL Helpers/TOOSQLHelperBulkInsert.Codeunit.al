@@ -404,7 +404,8 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
                     if EvalDate = 0D then
                         SQLBulkmporterHelper.AddRowValueALDate(0, 0, 0, RowColumns)
                     else begin
-                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns);
+                        // EvalDate = ClosingDate(EvalDate) only for closing dates → flag stored as 23:59:59 in SQL
+                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns, EvalDate = ClosingDate(EvalDate))
                     end;
                 end;
 
@@ -470,7 +471,8 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
                     if EvalDate = 0D then
                         SQLBulkmporterHelper.AddRowValueALDate(0, 0, 0, RowColumns)
                     else begin
-                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns);
+                        // EvalDate = ClosingDate(EvalDate) only for closing dates → flag stored as 23:59:59 in SQL
+                        SQLBulkmporterHelper.AddRowValueALDate(Date2DMY(EvalDate, 3), Date2DMY(EvalDate, 2), Date2DMY(EvalDate, 1), RowColumns, EvalDate = ClosingDate(EvalDate));
                     end;
                 end;
             FieldValue.Type::DateTime:
@@ -530,9 +532,10 @@ codeunit 51016 "TOO SQL Helper Bulk Insert"
 
     #region Send Bulk
     [TryFunction]
-    procedure CommitBulkInserts()
+    procedure CommitBulkInserts(UseTableLock: Boolean)
     begin
-        SQLBulkmporterHelper.WriteToServer(GetSqlConnectionString(), BaseTableSQLName);
+        // UseTableLock = false → per-row locks, lets several threads bulk-insert the same table at once
+        SQLBulkmporterHelper.WriteToServer(GetSqlConnectionString(), BaseTableSQLName, UseTableLock);
     end;
     #endregion
     #endregion
