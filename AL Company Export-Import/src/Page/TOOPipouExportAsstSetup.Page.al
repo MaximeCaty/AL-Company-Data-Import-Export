@@ -305,8 +305,8 @@ page 51008 "TOO Pipou Export Asst. Setup"
                     PressedExport := true;
                     StartExport();
                     Rec.SetRange("Archive ID", TempArchive."Archive ID");
-                    if Rec.FindFirst() then
-                        Page.Run(Page::"TOO Pipou Archive Card", Rec);
+                    Rec.FindFirst();
+                    Page.Run(Page::"TOO Pipou Archives", Rec);
                     CurrPage.Close();
                 end;
             }
@@ -360,6 +360,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Archive: record "TOO Pipou Archive";
     begin
         if (step = 6) and PressedExport then begin
+            // If export was pressed but Dialog closed, open the archive card
             Rec.SetRange("Archive ID", TempArchive."Archive ID");
             if Rec.FindFirst() then begin
                 Page.RunModal(Page::"TOO Pipou Archive Card", Rec);
@@ -439,85 +440,66 @@ page 51008 "TOO Pipou Export Asst. Setup"
     local procedure CreateTablesLists()
     var
         TableMeta: Record "Table Metadata";
-        Fields: Record Field;
         Win: Dialog;
         I: Integer;
-        RecRef: RecordRef;
-        NoOfRec: Integer;
 #if ONPREM
         TableInfo: Record "Table Information";
+        GlobalTableMeta: Record "Table Metadata";
+        GlobalTableInfo: Record "Table Information";
+#else
+        RecRef: RecordRef;
+        NoOfRec: Integer;
 #endif
     begin
         Win.Open('Generating table and field definition list... \#1########');
 
 #if ONPREM
         // === ON-PREMISES: Use Table Information (faster record count) ===
-        FilterTableInfo(TableMeta, not IncludeLogsTables, not IncludeArchiveTables);
+        // Per-company tables: Table Information rows are scoped to Company Name = ExportCompanyName
+        FilterTableInfo(TableMeta, not IncludeLogsTables, not IncludeArchiveTables, true, false);
         TableInfo.SetLoadFields("No. of Records", "Table No.", "Table Name");
         TableInfo.SetRange("Company Name", ExportCompanyName);
         TableInfo.SetFilter("Table No.", TableMeta.GetFilter(ID));
         TableInfo.SetFilter("Table Name", TableMeta.GetFilter(Name));
         CompanyTotalTables := TableInfo.Count();
 
+        if IncludeGlobalData then begin
+            // Global (DataPerCompany = false) tables have no company SQL prefix, so Table Information
+            // lists them with a blank Company Name, never under ExportCompanyName. Query them separately.
+            FilterTableInfo(GlobalTableMeta, not IncludeLogsTables, not IncludeArchiveTables, false, true);
+            GlobalTableInfo.SetLoadFields("No. of Records", "Table No.", "Table Name");
+            GlobalTableInfo.SetRange("Company Name", '');
+            GlobalTableInfo.SetFilter("Table No.", GlobalTableMeta.GetFilter(ID));
+            GlobalTableInfo.SetFilter("Table Name", GlobalTableMeta.GetFilter(Name));
+            CompanyTotalTables += GlobalTableInfo.Count();
+        end;
+
         if TableInfo.FindSet() then
             repeat
-                if (TableInfo."Table No." < 2000000000) then begin   // Skip most system tables
-                                                                     // Search fields (same logic)
-                    Fields.SetRange(TableNo, TableInfo."Table No.");
-                    if IncludeAuditFields then
-                        Fields.SetFilter("No.", '<>2000000000') // only exclude the systemID, keep audits
-                    else
-                        Fields.SetFilter("No.", '<2000000000');
-
-                    Fields.SetRange(Class, Fields.Class::Normal);
-                    Fields.SetRange(ObsoleteState, Fields.ObsoleteState::No);
-                    Fields.SetRange(Enabled, true);
-
-                    if Fields.FindSet() then begin
-                        if TableInfo."No. of Records" > 0 then begin
-                            TableMeta.Get(TableInfo."Table No.");
-                            StoreTableMeta(TableMeta, TableInfo."No. of Records");
-                            repeat
-                                StoreFieldMeta(Fields);
-                            until Fields.Next() = 0;
-                        end;
-                    end;
-                end;
-
+                StoreTableAndFields(TableInfo."Table No.", TableInfo."No. of Records");
                 I += 1;
                 Win.Update(1, ProgressBar(I / CompanyTotalTables));
             until TableInfo.Next() = 0;
 
+        if IncludeGlobalData and GlobalTableInfo.FindSet() then
+            repeat
+                StoreTableAndFields(GlobalTableInfo."Table No.", GlobalTableInfo."No. of Records");
+                I += 1;
+                Win.Update(1, ProgressBar(I / CompanyTotalTables));
+            until GlobalTableInfo.Next() = 0;
+
 #else
         // === CLOUD / SaaS: Use Table Metadata (only supported option) ===
-        FilterTableInfo(TableMeta, not IncludeLogsTables, not IncludeArchiveTables);
+        FilterTableInfo(TableMeta, not IncludeLogsTables, not IncludeArchiveTables, true, IncludeGlobalData);
         CompanyTotalTables := TableMeta.Count();
 
         if TableMeta.FindSet() then
             repeat
-                if (TableMeta.ID < 2000000000) then begin
-                    Fields.SetRange(TableNo, TableMeta.ID);
-                    if IncludeAuditFields then
-                        Fields.SetFilter("No.", '<>2000000000')
-                    else
-                        Fields.SetFilter("No.", '<2000000000');
-
-                    Fields.SetRange(Class, Fields.Class::Normal);
-                    Fields.SetRange(ObsoleteState, Fields.ObsoleteState::No);
-                    Fields.SetRange(Enabled, true);
-
-                    if Fields.FindSet() then begin
-                        RecRef.Open(TableMeta.ID, false, ExportCompanyName);
-                        NoOfRec := RecRef.Count();
-                        RecRef.Close();
-
-                        if NoOfRec > 0 then begin
-                            StoreTableMeta(TableMeta, NoOfRec);
-                            repeat
-                                StoreFieldMeta(Fields);
-                            until Fields.Next() = 0;
-                        end;
-                    end;
+                if TableMeta.ID < 2000000000 then begin
+                    RecRef.Open(TableMeta.ID, false, ExportCompanyName);
+                    NoOfRec := RecRef.Count();
+                    RecRef.Close();
+                    StoreTableAndFields(TableMeta.ID, NoOfRec);
                 end;
 
                 I += 1;
@@ -529,7 +511,35 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Win.Close();
     end;
 
-    local procedure FilterTableInfo(var Tables: Record "Table Metadata"; ExclLogsTables: Boolean; ExclArchiveTables: Boolean)
+    local procedure StoreTableAndFields(TableNo: Integer; NoOfRecords: Integer)
+    var
+        TableMeta: Record "Table Metadata";
+        Fields: Record Field;
+    begin
+        if TableNo >= 2000000000 then // Skip most system tables
+            exit;
+        if NoOfRecords <= 0 then
+            exit;
+
+        Fields.SetRange(TableNo, TableNo);
+        if IncludeAuditFields then
+            Fields.SetFilter("No.", '<>2000000000') // only exclude the systemID, keep audits
+        else
+            Fields.SetFilter("No.", '<2000000000');
+        Fields.SetRange(Class, Fields.Class::Normal);
+        Fields.SetRange(ObsoleteState, Fields.ObsoleteState::No);
+        Fields.SetRange(Enabled, true);
+        if not Fields.FindSet() then
+            exit;
+
+        TableMeta.Get(TableNo);
+        StoreTableMeta(TableMeta, NoOfRecords);
+        repeat
+            StoreFieldMeta(Fields);
+        until Fields.Next() = 0;
+    end;
+
+    local procedure FilterTableInfo(var Tables: Record "Table Metadata"; ExclLogsTables: Boolean; ExclArchiveTables: Boolean; InclCompanyData: Boolean; InclGlobalData: Boolean)
     var
         NameFilter: Text;
         IDFilter: Text;
@@ -538,7 +548,7 @@ page 51008 "TOO Pipou Export Asst. Setup"
         IDFilter := StrSubstNo('<>%1&<>%2&<>%3&<>%4&<>%5&<>%6&<>%7&<>%8&<>%9&<>%10&<>%11&<>%12&<>%13&<>%14&<>%15', Database::"TOO Pipou Archive", Database::"TOO Pipou Archive Tables", Database::"TOO Pipou Archive Fields", Database::"TOO Pipou Archive Files", Database::"TOO Pipou Import Log", database::"TOO Pipou Thread", Database::"Config. Package Data", Database::"Config. Package Error", Database::"Config. Package Record", Database::"Configuration Package File", Database::"Config. Record For Processing", database::"Error Message", database::"Data Migration Error", Database::Session, Database::"Session Event");
         // Exclude Buffers
         NameFilter := '<>* Buffer';
-        // Exclude Logs       
+        // Exclude Logs
         if ExclLogsTables then begin
             NameFilter += '&<>* Log&<>* log&<>* Logs&<>* logs&<>*Log Entry';
             IDFilter += StrSubstNo('&<>%1&<>%2&<>%3', database::"Config. Package Data", database::"Config. Package Error", Database::"Config. Package Record");
@@ -555,6 +565,14 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Tables.Setfilter("Name", NameFilter);
         Tables.SetFilter(ID, IDFilter);
         Tables.SetRange(DataIsExternal, false);
+        case true of
+            InclCompanyData and InclGlobalData:
+                Tables.SetRange(DataPerCompany); // both
+            InclCompanyData:
+                Tables.SetRange(DataPerCompany, true); // company-scoped tables only
+            InclGlobalData:
+                Tables.SetRange(DataPerCompany, false); // global (per-database) tables only
+        end;
     end;
     #endregion
 
@@ -566,10 +584,10 @@ page 51008 "TOO Pipou Export Asst. Setup"
         Exportcompleted: Label 'The export of company %1 has been completed in %2.\ \Total Data Size : %3\Total Compressed Size : %4';
         NothingToExport: Label 'There were no data found to export in given company. If you provide a date time for differential export, make sure records were created after this date.';
         ProcessingStart: DateTime;
-        PipouExport: Codeunit "TOO Pipou Export Data";
         RecRef: RecordRef;
         ArchiveTables: Record "TOO Pipou Archive Tables";
         ArchiveTablesFields: Record "TOO Pipou Archive Fields";
+        ExportCdu: Codeunit "TOO Pipou Export Data";
     begin
         Win.Open(CreatingArch);
         // Create archive record
@@ -628,12 +646,10 @@ page 51008 "TOO Pipou Export Asst. Setup"
 
         // Run exports
         ProcessingStart := CurrentDateTime;
-        PipouExport.MultiThreadExport(Rec);
+        ExportCdu.MultiThreadExport(Rec);
         Rec.Get(Rec."Archive Name", Rec."Archive ID");
         if Rec."No. Files" = 0 then
             Error(NothingToExport);
-
-        PressedExport := false; // disable catching dialog closed
 
         // Download
         Rec.DownloadArchiveFile();
