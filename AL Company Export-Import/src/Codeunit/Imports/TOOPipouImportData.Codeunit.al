@@ -434,6 +434,7 @@ codeunit 51009 "TOO Pipou Import Data"
 #if ONPREM
             ClearLastError();
             if SQLHelper.CommitBulkInserts() then begin
+                SelectLatestVersion(ArchiveFile."Table ID"); // clear service cache for imported table through SQL
                 // LockTable + Get by PK = row-level UPDLOCK, avoids table/range lock for BC < 23 (before tri-state lock versions)
                 LockedArchiveFile.LockTable(true);
                 LockedArchiveFile.Get(ArchiveFile."Archive Name", ArchiveFile."Archive ID", ArchiveFile."File Name");
