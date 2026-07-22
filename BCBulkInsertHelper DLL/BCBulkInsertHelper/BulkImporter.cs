@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Data;
@@ -123,13 +123,18 @@ namespace BCBulkInsertHelper
             }
         }
 
-        public void AddRowValueALDate(int Year, int Month, int Day, int columnIndex)
+        public void AddRowValueALDate(int Year, int Month, int Day, int columnIndex, bool isClosing = false)
         {
             if (Year <= 1753) // this catches 0DT from AL
             {
                 _currentRow[columnIndex] = ALBlankDateTime;
             }
-            else 
+            else if (isClosing)
+            {
+                // BC flags a closing date in SQL with time 23:59:59.000 (normal date = 00:00:00.000)
+                _currentRow[columnIndex] = new DateTime(Year, Month, Day, 23, 59, 59, DateTimeKind.Utc);
+            }
+            else
             {
                 _currentRow[columnIndex] = new DateTime(Year, Month, Day, 0, 0, 0, DateTimeKind.Utc);
             }
@@ -177,12 +182,18 @@ namespace BCBulkInsertHelper
             _dataTable.Rows.Add(_currentRow);
         }
 
-        public void WriteToServer(string connectionString, string mainTableName, int batchSize = 10000)
-        {            
+        public void WriteToServer(string connectionString, string mainTableName, bool useTableLock = true, int batchSize = 10000)
+        {
             if (_dataTable.Rows.Count == 0)
                 return;
 
-            // Detect field from table extnesion (ending with $ + app guid)
+            // TableLock = one BU lock on whole table (fast, single writer). Drop it for per-row locks
+            // when several threads bulk-insert the same table concurrently.
+            SqlBulkCopyOptions bulkOptions = SqlBulkCopyOptions.KeepIdentity;
+            if (useTableLock)
+                bulkOptions |= SqlBulkCopyOptions.TableLock;
+
+            // Detect field from table extension (ending with $ + app guid)
             bool hasExtensionFields = false;
             List<string> extensionColumns = new List<string>();
 
@@ -211,7 +222,7 @@ namespace BCBulkInsertHelper
 
             if (mainColumns.Count > 0)
             {
-                using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.TableLock))
+                using (var bulk = new SqlBulkCopy(connectionString, bulkOptions))
                 {
                     bulk.DestinationTableName = mainTableName;
                     bulk.BatchSize = batchSize;
@@ -252,7 +263,7 @@ namespace BCBulkInsertHelper
             }
             if (hasExtensionFields && _pkColumns.Count > 0)
             {
-                 using (var bulk = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.TableLock))
+                 using (var bulk = new SqlBulkCopy(connectionString, bulkOptions))
                     {
                         bulk.DestinationTableName = extTableName;
                         bulk.BatchSize = batchSize;
@@ -328,6 +339,8 @@ namespace BCBulkInsertHelper
 
         private byte[] CompressForBusinessCentral(byte[] rawData)
         {
+            // Compress Blob stream using Deflate
+            // Reproduce BC behavious for Blob table fields SQL storage
             if (rawData == null || rawData.Length == 0)
                 return new byte[0];  // Empty – no header needed
 
