@@ -10,6 +10,7 @@ codeunit 51009 "TOO Pipou Import Data"
         ArchiveTables: Record "TOO Pipou Archive Tables";
         ArchiveFile: Record "TOO Pipou Archive Files";
         OtherThreads: Record "TOO Pipou Thread";
+        IgnoreEvents: Codeunit "TOO Pipou Import Events";
     begin
         // Set thread status as started
         Rec."Session ID" := SessionId();
@@ -46,7 +47,7 @@ codeunit 51009 "TOO Pipou Import Data"
         OtherThreads.SetFilter(Status, '<>%1', OtherThreads.Status::"Completed ✅");
         if OtherThreads.IsEmpty() then begin
             Archive.Get(Archive."Archive Name", Archive."Archive ID");
-            // Set as imported
+            // Detect if fully or partialy imported
             ArchiveFile.SetRange("Archive ID", Rec."Archive ID");
             ArchiveFile.SetRange("Affected Thread", Rec."Thread No.");
             ArchiveFile.SetRange(Imported, false);
@@ -82,6 +83,7 @@ codeunit 51009 "TOO Pipou Import Data"
         DataInStream: InStream;
         FieldInDataCount: Integer;
         FieldMatchedCount: Integer;
+        RecordRef: RecordRef;
         Fields: Record Field;
         TableMeta: Record "Table Metadata";
         FieldsOriginalIDList: array[500] of Integer;
@@ -112,7 +114,6 @@ codeunit 51009 "TOO Pipou Import Data"
         OrigFlatType: array[500] of Enum "TOO Fields Types";
         OrigFlatLen: array[500] of Integer;
         OrigFlatID: array[500] of Integer;
-        ImportFieldRef: array[500] of FieldRef;
         CleanedErr: Text;
         LockedArchiveFile: Record "TOO Pipou Archive Files"; // used for row-level locking on Modify (BC 23 has no tristate locking)
     begin
@@ -214,7 +215,6 @@ codeunit 51009 "TOO Pipou Import Data"
         ArchiveTable.LockTable();
         ArchiveTable.Get(Archive."Archive ID", ArchiveFile."Table ID");
         if Archive.DeleteData and not ArchiveTable."PreImport Truncated" then begin
-            Clear(RecordRef);
             RecordRef.Open(ArchiveFile."Matched Table ID", false, Archive."Import Destination Company");
 
             // Update thread status
@@ -361,54 +361,44 @@ codeunit 51009 "TOO Pipou Import Data"
 #endif
             false:
                 #region AL
-                if ArchiveFile."Column Storage" then begin
+                if ArchiveFile."Column Storage" then
                     // Column oriented
-                    // load fieldrefs
-                    for I := 1 to FieldMatchedCount do
-                        if not FieldsMatchedColumnEmpty[I] then
-                            ImportFieldRef[I] := RecordRef.Field(FieldsMatchedID[I]);
-                    // Loop records                    
                     while (RecorsNbUnChecked + FileRecordPosition < LocalNbRecs) do begin
-                        // Loop fields
                         for I := 1 to FieldMatchedCount do
-                            if not FieldsMatchedColumnEmpty[I] then
-                                if not PipouMgt.EvaluateBinaryToBCField(ImportFieldRef[I], MatchedDataColInStream[I]) then
-                                    PipouMgt.LogParsingFieldWarningMessage(ArchiveFile, RecordRef.RecordId, StrSubstNo('Unable to parse value into field %1, stream position %2 : %3', ImportFieldRef[I].Caption, DataInStream.Position, GetLastErrorText));
-                        // Insert
-                        IgnoreEvents.SetRecordID(RecordRef.RecordId);
+                            if not FieldsMatchedColumnEmpty[I] then begin
+                                BCField := RecordRef.Field(FieldsMatchedID[I]);
+                                if not PipouMgt.EvaluateBinaryToBCField(BCField, MatchedDataColInStream[I]) then
+                                    PipouMgt.LogParsingFieldWarningMessage(ArchiveFile, RecordRef.RecordId, StrSubstNo('Unable to parse value into field %1, stream position %2 : %3', BCField.Caption, DataInStream.Position, GetLastErrorText));
+                            end;
                         if not PipouMgt.TryInsertRecRef(RecordRef) then
                             PipouMgt.LogInsertRecErrorMessage(ArchiveFile, RecordRef.RecordId, GetLastErrorText());
-                        // Update progression
+                        Clear(RecordRef);
+                        RecordRef.Open(ArchiveFile."Matched Table ID", false, Archive."Import Destination Company");
                         RecorsNbUnChecked += 1;
                         if RecorsNbUnChecked >= 500 then
                             UpdateImportProgress(RecorsNbUnChecked, FileRecordPosition, Table, ArchiveFile, Thread);
                     end
-                end else begin
+                else
                     // Row oriented
-                    // load fieldrefs
-                    for I := 1 to FieldMatchedCount do
-                        if not FieldsOriginalColumnEmpty[I] and (FieldsOriginalMatchedIndex[I] <> 0) then
-                            ImportFieldRef[I] := RecordRef.Field(FieldsMatchedID[I]);
-                    // Loop records 
                     while (not DataInStream.EOS and (RecorsNbUnChecked + FileRecordPosition < LocalNbRecs)) do begin
-                        // Loop fields
                         for I := 1 to FieldInDataCount do
-                            if (FieldsOriginalMatchedIndex[I] = 0) or FieldsOriginalColumnEmpty[I] then
+                            if (FieldsOriginalMatchedIndex[I] = 0) then
+                                PipouMgt.SkipBinaryBytesBCField(FieldsOriginalTypeList[I], DataInStream)
+                            else if FieldsOriginalColumnEmpty[I] then
                                 PipouMgt.SkipBinaryBytesBCField(FieldsOriginalTypeList[I], DataInStream)
                             else begin
-                                if not PipouMgt.EvaluateBinaryToBCField(ImportFieldRef[I], DataInStream) then
-                                    PipouMgt.LogParsingFieldWarningMessage(ArchiveFile, RecordRef.RecordId, StrSubstNo('Unable to parse value into field %1, stream position %2', ImportFieldRef[I].Caption, DataInStream.Position));
+                                BCField := RecordRef.Field(OrigFlatID[I]);
+                                if not PipouMgt.EvaluateBinaryToBCField(BCField, DataInStream) then
+                                    PipouMgt.LogParsingFieldWarningMessage(ArchiveFile, RecordRef.RecordId, StrSubstNo('Unable to parse value into field %1, stream position %2', BCField.Caption, DataInStream.Position));
                             end;
-                        // Insert
-                        IgnoreEvents.SetRecordID(RecordRef.RecordId);
                         if not PipouMgt.TryInsertRecRef(RecordRef) then
                             PipouMgt.LogInsertRecErrorMessage(ArchiveFile, RecordRef.RecordId, GetLastErrorText());
-                        // Update progression
+                        Clear(RecordRef);
+                        RecordRef.Open(ArchiveFile."Matched Table ID", false, Archive."Import Destination Company");
                         RecorsNbUnChecked += 1;
                         if RecorsNbUnChecked >= 500 then
                             UpdateImportProgress(RecorsNbUnChecked, FileRecordPosition, Table, ArchiveFile, Thread);
                     end;
-                end;
         #endregion
         end;
 
@@ -433,8 +423,9 @@ codeunit 51009 "TOO Pipou Import Data"
         if UseSQL then begin
 #if ONPREM
             ClearLastError();
-            if SQLHelper.CommitBulkInserts() then begin
-                SelectLatestVersion(ArchiveFile."Table ID"); // clear service cache for imported table through SQL
+            // Table lock only when a single thread feeds this table; per-row locks when several do (allows concurrent bulk insert)
+            if SQLHelper.CommitBulkInserts(not TableImportedByMultipleThreads(ArchiveFile)) then begin
+                SelectLatestVersion(ArchiveFile."Table ID");
                 // LockTable + Get by PK = row-level UPDLOCK, avoids table/range lock for BC < 23 (before tri-state lock versions)
                 LockedArchiveFile.LockTable(true);
                 LockedArchiveFile.Get(ArchiveFile."Archive Name", ArchiveFile."Archive ID", ArchiveFile."File Name");
@@ -470,6 +461,17 @@ codeunit 51009 "TOO Pipou Import Data"
     local procedure TryCommit()
     begin
         Commit();
+    end;
+
+    local procedure TableImportedByMultipleThreads(var ArchiveFile: Record "TOO Pipou Archive Files"): Boolean
+    var
+        OtherFiles: Record "TOO Pipou Archive Files";
+    begin
+        // Same table fed by files assigned to another thread → concurrent bulk insert into one SQL table
+        OtherFiles.SetRange("Archive ID", ArchiveFile."Archive ID");
+        OtherFiles.SetRange("Table ID", ArchiveFile."Table ID");
+        OtherFiles.SetFilter("Affected Thread", '<>%1', ArchiveFile."Affected Thread");
+        exit(not OtherFiles.IsEmpty());
     end;
     #endregion
 
@@ -513,8 +515,6 @@ codeunit 51009 "TOO Pipou Import Data"
         IgnoreLogsNBuffers: Boolean;
         MatchedDataColInStream: Array[500] of InStream;
         EmptyGuid: Guid;
-        IgnoreEvents: Codeunit "TOO Pipou Import Events";
-        RecordRef: RecordRef;
 #if ONPREM
         SQLHelper: Codeunit "TOO SQL Helper Bulk Insert";
 #endif
