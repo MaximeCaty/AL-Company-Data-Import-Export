@@ -6,26 +6,25 @@ codeunit 51005 "TOO Pipou Export Data"
     #region MultiThrd Exp
     procedure MultiThreadExport(var Archive: Record "TOO Pipou Archive")
     var
-        Win: Dialog;
-        Progress: Label 'Exporting Data from company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\Records : #6######\Compressed Size (KB) : #7#######-\#8######\-\#9######\-\#10######\-\#11######\-\#12######\-\#13######';
-        NothingToImportLbl: Label 'There is nothing left to import for selected table. Reset the archive import state to redo the import.';
-        RecProceed: Integer;
-        TotFileSize: Decimal;
-        TotCompSize: Decimal;
-        ElapsedTime: Duration;
-        ThreadTxt: Text;
-        Thread: Record "TOO Pipou Thread";
-        SessionID: Integer;
-        AllThreadCompleted: Boolean;
-        RemDuration: Duration;
-        RemProgress: Decimal;
-        GlobalProgress: Decimal;
         OtherArchive: Record "TOO Pipou Archive";
         ArchiveTables: Record "TOO Pipou Archive Tables";
-        ArchiveFiles: Record "TOO Pipou Archive Files";
+        Thread: Record "TOO Pipou Thread";
+        AllThreadCompleted: Boolean;
         ErrorThrown: Boolean;
-        ErrorMessage: Text;
+        GlobalProgress: Decimal;
+        RemProgress: Decimal;
+        TotCompSize: Decimal;
+        TotFileSize: Decimal;
+        Win: Dialog;
+        ElapsedTime: Duration;
+        RemDuration: Duration;
         ArchTotalRecSize: Integer;
+        RecProceed: Integer;
+        SessionID: Integer;
+        NothingToImportLbl: Label 'There is nothing left to import for selected table. Reset the archive import state to redo the import.';
+        Progress: Label 'Exporting Data from company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\Records : #6######\Compressed Size (KB) : #7#######-\#8######\-\#9######\-\#10######\-\#11######\-\#12######\-\#13######';
+        ErrorMessage: Text;
+        ThreadTxt: Text;
     begin
         ThreadHelper.CheckThreadsRunning();
 
@@ -117,37 +116,43 @@ codeunit 51005 "TOO Pipou Export Data"
                 // Thread 1 :
                 ThreadTxt := ThreadHelper.UpdateThreadUIProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                 Win.Update(8, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                if ErrorThrown then
+                    ThrowError(Archive, ErrorMessage);
 
                 // Thread 2 :
                 if Archive."Number of Threads" > 1 then begin
                     ThreadTxt := ThreadHelper.UpdateThreadUIProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(9, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 3 :
                 if Archive."Number of Threads" > 2 then begin
                     ThreadTxt := ThreadHelper.UpdateThreadUIProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(10, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 4 :
                 if Archive."Number of Threads" > 3 then begin
                     ThreadTxt := ThreadHelper.UpdateThreadUIProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(11, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 5 :
                 if Archive."Number of Threads" > 4 then begin
                     ThreadTxt := ThreadHelper.UpdateThreadUIProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(12, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage);
                 end;
                 // Thread 6 :
                 if Archive."Number of Threads" > 5 then begin
                     ThreadTxt := ThreadHelper.UpdateThreadUIProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, TotCompSize, Archive);
                     Win.Update(13, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage);
                 end;
 
                 // Global progression
@@ -169,14 +174,14 @@ codeunit 51005 "TOO Pipou Export Data"
                 end;
             end;
         end;
-        Win.Close();
+        //Win.Close();
         // Finished
     end;
 
     local procedure ThrowError(var Archive: Record "TOO Pipou Archive"; Msg: Text)
     var
-        Thread: Record "TOO Pipou Thread";
         ActiveSession: Record "Active Session";
+        Thread: Record "TOO Pipou Thread";
     begin
         // Kill all other threads
         Thread.SetRange("Archive ID", Archive."Archive ID");
@@ -201,15 +206,32 @@ codeunit 51005 "TOO Pipou Export Data"
     trigger OnRun()
     var
         Archive: Record "TOO Pipou Archive";
+        ArchFiles: Record "TOO Pipou Archive Files";
         ArchiveTables: Record "TOO Pipou Archive Tables";
         OtherThreads: Record "TOO Pipou Thread";
-        ArchFiles: Record "TOO Pipou Archive Files";
     begin
         // Set thread status as started
         Rec."Session ID" := SessionId();
         Rec.Status := Rec.Status::"Exporting Data";
         Rec.Modify();
         Commit();
+
+        // Initialize
+        Archive.Get(Rec."Archive Name", Rec."Archive ID");
+        BlobMaxSize := Archive."Blob Max Size";
+        OneByte := 1;
+        AllALTypes.Open(Database::"TOO All Types");
+        DefTextFieldRef := AllALTypes.Field(10);
+        DefCodeFieldRef := AllALTypes.Field(11);
+        DefDateFieldRef := AllALTypes.Field(12);
+        DefTimeFieldRef := AllALTypes.Field(13);
+        DefDateTimeFieldRef := AllALTypes.Field(14);
+        DefIntFieldRef := AllALTypes.Field(15);
+        DefBigIntFieldRef := AllALTypes.Field(16);
+        DefDecFieldRef := AllALTypes.Field(17);
+        DefDurFieldRef := AllALTypes.Field(18);
+        DefRecIDFieldRef := AllALTypes.Field(19);
+        DefDateFormulaFieldRef := AllALTypes.Field(20);
 
         // Table range to proceed
         ArchiveTables.ReadIsolation := ArchiveTables.ReadIsolation::ReadUncommitted;
@@ -220,7 +242,7 @@ codeunit 51005 "TOO Pipou Export Data"
         else
             // Thread 2+
             ArchiveTables.SetRange("Affected Thread", Rec."Thread No.");
-        Archive.Get(Rec."Archive Name", Rec."Archive ID");
+
 
         // Init
         CR[1] := 13; // Carriage return, '\r'
@@ -282,23 +304,22 @@ codeunit 51005 "TOO Pipou Export Data"
     [TryFunction]
     procedure ExportTableData(var Thread: Record "TOO Pipou Thread"; var Archive: Record "TOO Pipou Archive"; var Table: Record "TOO Pipou Archive Tables")
     var
-        RecRef: RecordRef;
-        Tablefields: Record "TOO Pipou Archive Fields";
         Field: Record Field;
-        FieldIDList: array[500] of Integer;
-        FieldNeedEscapeList: array[500] of Boolean;
-        FieldTypeList: array[500] of Enum "TOO Fields Types";
+        Tablefields: Record "TOO Pipou Archive Fields";
+        RecRef: RecordRef;
+        FieldRefArr: array[500] of FieldRef;
+        EnableColStore: Boolean;
         FieldAllEmpty: array[500] of Boolean;
         FieldDataClassifed: array[500] of Boolean;
-        I: Integer;
+        FieldTypeList: array[500] of Enum "TOO Fields Types";
+        FieldIDList: array[500] of Integer;
         FieldsCount: Integer;
-        EnableColStore: Boolean;
-        UnCheckedPos: Integer;
+        I: Integer;
         TableRecPos: Integer;
-        FieldRefArr: array[500] of FieldRef;
+        UnCheckedPos: Integer;
     begin
         // Ignore export of it self
-        if Table."Table ID" IN [Database::"TOO Pipou Archive Files", Database::"TOO Pipou Archive", database::"TOO Pipou Import Log", database::"TOO Pipou Archive Fields", database::"TOO Pipou Archive Tables", database::"TOO Pipou Thread"] then
+        if Table."Table ID" in [Database::"TOO Pipou Archive Files", Database::"TOO Pipou Archive", database::"TOO Pipou Import Log", database::"TOO Pipou Archive Fields", database::"TOO Pipou Archive Tables", database::"TOO Pipou Thread"] then
             exit;
 
         // Open Record
@@ -308,7 +329,8 @@ codeunit 51005 "TOO Pipou Export Data"
             RecRef.Field(RecRef.SystemCreatedAtNo).SetFilter('>%1', Archive."Diff. Export Start DT");
             Table."No. of Records" := RecRef.Count(); // overide number of rec counted
         end;
-        if Table."No. of Records" = 0 then exit;
+        if Table."No. of Records" = 0 then
+            exit;
 
         // Enable transposition on 100+ records
         if Archive."Enable Columns Transcoding" then
@@ -333,10 +355,7 @@ codeunit 51005 "TOO Pipou Export Data"
                 FieldIDList[FieldsCount] := Tablefields."Field ID";
                 FieldTypeList[FieldsCount] := Tablefields."Field Type";
                 FieldAllEmpty[FieldsCount] := true; // will be set to false at first occurence of none empty data
-                if (Tablefields."Field Type" IN [Tablefields."Field Type"::Text, Tablefields."Field Type"::Code, Tablefields."Field Type"::RecordID]) then
-                    FieldNeedEscapeList[FieldsCount] := true
-                else
-                    FieldNeedEscapeList[FieldsCount] := false;
+
                 // Prepare per column blob for transposed Bin (parquet like format)
                 if EnableColStore then
                     ColumnOutStrArr[FieldsCount] := ColumnBlobArr[FieldsCount].CreateOutStream();
@@ -347,8 +366,9 @@ codeunit 51005 "TOO Pipou Export Data"
         #endregion
 
         #region Export Records
+        RecRef.ReadIsolation := RecRef.ReadIsolation::ReadUncommitted;
         if RecRef.FindSet(false) then begin
-            // Pre-cache field references and encode flag for hot path
+            // Pre-cache field references for hot path
             for I := 1 to FieldsCount do
                 FieldRefArr[I] := RecRef.Field(FieldIDList[I]);
             // Create First file chunk
@@ -356,11 +376,11 @@ codeunit 51005 "TOO Pipou Export Data"
             CreateChunk(Archive, EnableColStore, Table, TableChunkNo, 0, FieldsCount);
             case EnableColStore of
                 true:
-                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then begin
+                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then
                         // COLUMN ORIENTED + KEEP ALL
                         repeat
                             // Chunk/Progress handling (every 500 Rec + every 1s)
-                            if (UnCheckedPos >= 500) then begin
+                            if (UnCheckedPos >= 1000) then begin
                                 TableRecPos += UnCheckedPos;
                                 ThreadRecProceed += UnCheckedPos;
                                 UnCheckedPos := 0;
@@ -372,6 +392,7 @@ codeunit 51005 "TOO Pipou Export Data"
                                 end;
                                 // Chunk Max Size check
                                 if CheckChunkMaxSizeForClosure(Archive."Chunk Max Size", FieldsCount, EnableColStore) then begin
+                                    // Detect empty text field using shared dict (if only 0 bytes (1 byte per record) = all empty
                                     CloseChunk(Thread, Archive, EnableColStore, Table, FieldsCount, FieldIDList, FieldAllEmpty, TableRecPos);
                                     TableChunkNo += 1;
                                     CreateChunk(Archive, EnableColStore, Table, TableChunkNo, TableRecPos, FieldsCount);
@@ -380,16 +401,16 @@ codeunit 51005 "TOO Pipou Export Data"
 
                             // Fields
                             for I := 1 to FieldsCount do
-                                if not PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
+                                if not WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
                                     FieldAllEmpty[I] := false;
 
                             UnCheckedPos += 1;
-                        until RecRef.Next() = 0;
-                    end else
+                        until RecRef.Next() = 0
+                    else
                         // COLUMN ORIENTED + NOT CLASSIFIED
                         repeat
-                            // Chunk/Progress handling (every 500 Rec + every 1s)
-                            if (UnCheckedPos >= 500) then begin
+                            // Chunk/Progress handling (every 1000 Rec + every 1s)
+                            if (UnCheckedPos >= 1000) then begin
                                 TableRecPos += UnCheckedPos;
                                 ThreadRecProceed += UnCheckedPos;
                                 UnCheckedPos := 0;
@@ -410,19 +431,19 @@ codeunit 51005 "TOO Pipou Export Data"
                             // Fields
                             for I := 1 to FieldsCount do
                                 if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ColumnOutStrArr[I])
+                                    WriteBinaryEmptyField(FieldRefArr[I], ColumnOutStrArr[I])
                                 else
-                                    if not PipouMgt.WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
+                                    if not WriteFieldBinaryData(ColumnOutStrArr[I], FieldRefArr[I]) then
                                         FieldAllEmpty[I] := false;
 
                             UnCheckedPos += 1;
                         until RecRef.Next() = 0;
                 false:
                     // ROW ORIENTED + KEEP ALL
-                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then begin
+                    if (Archive.ClassifiedDataHandling = Archive.ClassifiedDataHandling::Keep) then
                         repeat
-                            // Chunk/Progress handling (every 500 Rec + every 1s)
-                            if (UnCheckedPos >= 500) then begin
+                            // Chunk/Progress handling (every 1000 Rec + every 1s)
+                            if (UnCheckedPos >= 1000) then begin
                                 TableRecPos += UnCheckedPos;
                                 ThreadRecProceed += UnCheckedPos;
                                 UnCheckedPos := 0;
@@ -442,16 +463,16 @@ codeunit 51005 "TOO Pipou Export Data"
 
                             // Fields
                             for I := 1 to FieldsCount do
-                                if not PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
+                                if not WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
                                     FieldAllEmpty[I] := false;
 
                             UnCheckedPos += 1;
-                        until RecRef.Next() = 0;
-                    end else
+                        until RecRef.Next() = 0
+                    else
                         // ROW ORIENTED + NOT CLASSIFIED
                         repeat
-                            // Chunk/Progress handling (every 500 Rec + every 1s)
-                            if (UnCheckedPos >= 500) then begin
+                            // Chunk/Progress handling (every 1000 Rec + every 1s)
+                            if (UnCheckedPos >= 1000) then begin
                                 TableRecPos += UnCheckedPos;
                                 ThreadRecProceed += UnCheckedPos;
                                 UnCheckedPos := 0;
@@ -472,9 +493,9 @@ codeunit 51005 "TOO Pipou Export Data"
                             // Fields
                             for I := 1 to FieldsCount do
                                 if FieldDataClassifed[I] then
-                                    PipouMgt.WriteBinaryEmptyField(FieldRefArr[I], ChunkOutStr)
+                                    WriteBinaryEmptyField(FieldRefArr[I], ChunkOutStr)
                                 else
-                                    if not PipouMgt.WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
+                                    if not WriteFieldBinaryData(ChunkOutStr, FieldRefArr[I]) then
                                         FieldAllEmpty[I] := false;
 
                             UnCheckedPos += 1;
@@ -517,22 +538,21 @@ codeunit 51005 "TOO Pipou Export Data"
             TempBlobChunk.CreateOutStream(ChunkOutStr)
         else
             // Reinitialize columns blob
-            if (ChunkNo > 1) then begin
+            if (ChunkNo > 1) then
                 for I := 1 to FieldsCount do
                     ColumnOutStrArr[I] := ColumnBlobArr[I].CreateOutStream();
-            end;
     end;
     #endregion
 
     #region Close Chunks
-    local procedure CheckChunkMaxSizeForClosure(var ChunkMaxSize: integer; FieldsCount: Integer; EnableColStore: Boolean): Boolean
+    local procedure CheckChunkMaxSizeForClosure(var ChunkMaxSize: Integer; FieldsCount: Integer; EnableColStore: Boolean): Boolean
     var
         CurrFileSize, I : Integer;
     begin
-        if EnableColStore then begin
+        if EnableColStore then
             for I := 1 to FieldsCount do
-                CurrFileSize += ColumnBlobArr[I].Length();
-        end else
+                CurrFileSize += ColumnBlobArr[I].Length()
+        else
             CurrFileSize := TempBlobChunk.Length();
 
         exit(CurrFileSize > ChunkMaxSize);
@@ -541,14 +561,14 @@ codeunit 51005 "TOO Pipou Export Data"
     local procedure CloseChunk(var Thread: Record "TOO Pipou Thread"; var Archive: Record "TOO Pipou Archive"; EnableTranspose: Boolean; var Table: Record "TOO Pipou Archive Tables"; FieldsCount: Integer; var FieldIDList: array[500] of Integer; FieldAllEmpty: array[500] of Boolean; EndIndex: Integer)
     var
         Tablefields: Record "TOO Pipou Archive Fields";
-        InStr: InStream;
-        OutStr: OutStream;
-        I: Integer;
+        Hash: Codeunit "Cryptography Management";
+        ColstoreBlob: Codeunit "Temp Blob";
         AdvCompress: Codeunit "TOO Advanced Compression Mgt.";
         ColStoreMgt: Codeunit "TOO Pipou colstore Mgt.";
-        Hash: Codeunit "Cryptography Management";
+        InStr: InStream;
+        I: Integer;
         HashAlgorithmType: Option MD5,SHA1,SHA256,SHA384,SHA512;
-        ColstoreBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
     begin
         // Update thread status
         Thread."Current Table Progress %" := 100;
@@ -627,13 +647,12 @@ codeunit 51005 "TOO Pipou Export Data"
         ArchiveFile.Insert(false);
 
         // Update meta about empty columns
-        for I := 1 to FieldsCount do begin
+        for I := 1 to FieldsCount do
             if FieldAllEmpty[I] then begin
                 Tablefields.Get(Archive."Archive ID", Table."Table ID", FieldIDList[I]);
                 Tablefields."Empty In Chunks List" += Format(TableChunkNo) + ',';
                 Tablefields.Modify();
             end;
-        end;
 
         // Update thread progression
         Thread."Files Compressed Size (KB)" += ArchiveFile."Compressed Length" / 1024;
@@ -661,7 +680,7 @@ codeunit 51005 "TOO Pipou Export Data"
                     exit(Archive."Prefered Compression Mode")
                 else
 #if ONPREM
-                    // Auto (On-Premise) : 
+                    // Auto (On-Premise) :
                     if InStr.Length() < 256 * 1024 then
                         // 1 KB - 256 KB : zStd (faster for small size, avoid exe and IO overhead)
                         exit(CompressionMode::zStandard)
@@ -708,6 +727,166 @@ codeunit 51005 "TOO Pipou Export Data"
 #endif
     #endregion
 
+    #region Write Bin
+    procedure WriteFieldBinaryData(var OutStream: OutStream; var FieldRef: FieldRef): Boolean // return if value is undefined/default value (true) or (false)
+    begin
+        case FieldRef.Type of
+
+            FieldRef.Type::Option,
+            FieldRef.Type::Integer:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefIntFieldRef.Value);
+                end;
+
+            FieldRef.Type::Text:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefTextFieldRef.Value);
+                end;
+
+            FieldRef.Type::Code:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefCodeFieldRef.Value);
+                end;
+
+            FieldRef.Type::Date:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDateFieldRef.Value);
+                end;
+
+            FieldRef.Type::DateTime:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDateTimeFieldRef.Value);
+                end;
+
+            FieldRef.Type::Boolean:
+                begin
+                    EvalBool := FieldRef.Value;
+                    if EvalBool then begin
+                        OutStream.Write(OneByte);
+                        exit(false);
+                    end else
+                        OutStream.Write(ZeroByte);
+                end;
+
+            FieldRef.Type::Decimal:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefDecFieldRef.Value);
+                end;
+
+            FieldRef.Type::Guid:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(IsNullGuid(FieldRef.Value));
+                end;
+
+            FieldRef.Type::Duration:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value <> DefDurFieldRef.Value);
+                end;
+
+            FieldRef.Type::Time:
+                begin
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefTimeFieldRef.Value);
+                end;
+
+            FieldRef.Type::DateFormula:
+                begin
+                    OutStream.Write(format(FieldRef.Value, 0, 9));
+                    exit(FieldRef.Value = DefDateFormulaFieldRef.Value);
+                end;
+
+            FieldRef.Type::RecordId:
+                begin
+                    OutStream.Write(format(FieldRef.Value, 0, 9));
+                    exit(FieldRef.Value = DefRecIDFieldRef.Value);
+                end;
+
+            FieldRef.Type::BLOB:
+
+                if BlobMgt.ExportBlobFieldBinary(FieldRef, OutStream, BlobMaxSize) > 0 then
+                    exit(false);
+
+            FieldRef.Type::Media:
+                begin
+                    BlobMgt.ExportMediaFieldBinary(FieldRef.Value, OutStream);
+                    exit(IsNullGuid(FieldRef.Value));
+                end;
+
+            FieldRef.Type::MediaSet:
+                begin
+                    BlobMgt.ExportMediaSetFieldBinary(FieldRef.Value, OutStream);
+                    exit(IsNullGuid(FieldRef.Value));
+                end;
+
+            FieldRef.Type::BigInteger:
+                begin
+                    EvalBigInt := FieldRef.Value;
+                    OutStream.Write(FieldRef.Value);
+                    exit(FieldRef.Value = DefBigIntFieldRef.Value);
+                end;
+
+            else
+                Error('Field type unsupported for binary writting : %1', FieldRef.Type); // Unknown data type ?
+
+        end;
+    end;
+    #endregion
+
+    #region Write Empty
+    procedure WriteBinaryEmptyField(FieldRef: FieldRef; var OutStr: OutStream)
+    begin
+        case FieldRef.Type of
+            FieldRef.Type::Text,
+            FieldRef.Type::Code,
+            FieldRef.Type::DateFormula,
+            FieldRef.Type::RecordId:
+                OutStr.Write('');
+
+            FieldRef.Type::BLOB,
+            FieldRef.Type::MediaSet,
+            FieldRef.Type::Media:
+                OutStr.Write(0);
+
+            FieldRef.Type::Integer,
+            FieldRef.Type::Option:
+                OutStr.Write(0);
+
+            FieldRef.Type::BigInteger,
+            FieldRef.Type::Duration:
+                OutStr.Write(0L);
+
+            FieldRef.Type::Date:
+                OutStr.Write(0);
+
+            FieldRef.Type::Time:
+                OutStr.Write(0);
+
+            FieldRef.Type::DateTime:
+                OutStr.Write(0L);
+
+            FieldRef.Type::Boolean:
+                OutStr.Write(ZeroByte);
+
+            FieldRef.Type::Decimal:
+                OutStr.Write(EmptyDecimal); // 12 bits
+
+            FieldRef.Type::Guid:
+                OutStr.Write(EmptyGuid); // 16 bits
+
+            else
+                Error('Field type %1 is not supported for empty binary writting', FieldRef.Type); // Unknown data type ?
+        end;
+    end;
+    #endregion
+
 
 
     local procedure IsDataClassified(DataClassif: Option): Boolean
@@ -715,24 +894,33 @@ codeunit 51005 "TOO Pipou Export Data"
         DataClassifOption: Option CustomerContent,ToBeClassified,EndUserIdentifiableInformation,AccountData,EndUserPseudonymousIdentifiers,OrganizationIdentifiableInformation,SystemMetadata;
     begin
         // Field OptionMembers = CustomerContent,ToBeClassified,EndUserIdentifiableInformation,AccountData,EndUserPseudonymousIdentifiers,OrganizationIdentifiableInformation,SystemMetadata;
-        if DataClassif IN [DataClassifOption::CustomerContent, DataClassifOption::EndUserIdentifiableInformation, DataClassifOption::EndUserPseudonymousIdentifiers, DataClassifOption::OrganizationIdentifiableInformation] then
+        if DataClassif in [DataClassifOption::CustomerContent, DataClassifOption::EndUserIdentifiableInformation, DataClassifOption::EndUserPseudonymousIdentifiers, DataClassifOption::OrganizationIdentifiableInformation] then
             exit(true)
         else
             exit(false);
     end;
 
     var
+        ArchiveFile: Record "TOO Pipou Archive Files";
         ColumnBlobArr: array[500] of Codeunit "Temp Blob";
-        ColumnOutStrArr: array[500] of OutStream;
         TempBlobChunk: Codeunit "Temp Blob";
-        CR: Text[1];
-        LF: Text[1];
         PipouMgt: Codeunit "TOO Pipou Mgt.";
         ThreadHelper: Codeunit "TOO Pipou Threads Mgt.";
-        ChunkOutStr: OutStream;
-        ThreadRecProceed: Integer;
-        ArchiveFile: Record "TOO Pipou Archive Files";
-        TableChunkNo: Integer;
         LastThreadUpdateDT: DateTime;
         StartDT: DateTime;
+        TableChunkNo: Integer;
+        ThreadRecProceed: Integer;
+        EvalBigInt: BigInteger;
+        ChunkOutStr: OutStream;
+        EvalBool: Boolean;
+        ColumnOutStrArr: array[500] of OutStream;
+        CR: Text[1];
+        LF: Text[1];
+        ZeroByte, OneByte : Byte;
+        EmptyDecimal: Decimal;
+        BlobMaxSize: Integer;
+        EmptyGuid: Guid;
+        DefBigIntFieldRef, DefCodeFieldRef, DefDateFieldRef, DefDateFormulaFieldRef, DefDateTimeFieldRef, DefDecFieldRef, DefDurFieldRef, DefIntFieldRef, DefRecIDFieldRef, DefTextFieldRef, DefTimeFieldRef : FieldRef;
+        AllALTypes: RecordRef;
+        BlobMgt: Codeunit "TOO Pipou Blob Mgt.";
 }
