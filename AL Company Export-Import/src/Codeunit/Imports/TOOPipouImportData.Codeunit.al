@@ -3,6 +3,27 @@ codeunit 51009 "TOO Pipou Import Data"
     // multi thread data import from pipou archive
     TableNo = "TOO Pipou Thread";
 
+    // force permission on protected tables to write into
+    Permissions = tabledata 52 = rimd, tabledata "Vendor Ledger Entry" = rimd, tabledata "FA Ledger Entry" = rimd, tabledata "Job Ledger Entry" = rimd, tabledata "Item Ledger Entry" = rimd,
+     tabledata "Res. Ledger Entry" = rimd, tabledata "Check Ledger Entry" = rimd, tabledata "Cust. Ledger Entry" = rimd, tabledata "Service Ledger Entry" = rimd,
+     tabledata "Capacity Ledger Entry" = rimd, tabledata "Employee Ledger Entry" = rimd, tabledata "Warranty Ledger Entry" = rimd, tabledata "Maintenance Ledger Entry" = rimd,
+     tabledata "Bank Account Ledger Entry" = rimd, tabledata "Ins. Coverage Ledger Entry" = rimd, tabledata "Payable Vendor Ledger Entry" = rimd, tabledata "Phys. Inventory Ledger Entry" = rimd,
+     tabledata "Payable Employee Ledger Entry" = rimd, tabledata "Detailed Employee Ledger Entry" = rimd, tabledata "Detailed Cust. Ledg. Entry" = rimd, tabledata "Detailed Vendor Ledg. Entry" = rimd,
+     tabledata "Sales Invoice Header" = rimd, tabledata "Sales Invoice Line" = rimd, tabledata "Sales Shipment Header" = rimd, tabledata "Sales Shipment Line" = rimd,
+     tabledata "Sales Cr.Memo Header" = rimd, tabledata "Sales Cr.Memo Line" = rimd, tabledata "Purch. Cr. Memo Hdr." = rimd, tabledata "Purch. Cr. Memo Line" = rimd,
+     tabledata "Purch. Inv. Header" = rimd, tabledata "Purch. Inv. Line" = rimd, tabledata "Purch. Rcpt. Header" = rimd, tabledata "Purch. Rcpt. Line" = rimd,
+     tabledata "Purchase Header Archive" = rimd, tabledata "Sales Line Archive" = rimd, tabledata "Sales Header Archive" = rimd, tabledata "Purchase Line Archive" = rimd,
+     tabledata "Sales Comment Line Archive" = rimd, tabledata "Purch. Comment Line Archive" = rimd, tabledata "Workflow Step Argument Archive" = rimd, tabledata "Workflow Record Change Archive" = rimd,
+     tabledata "Workflow Step Instance Archive" = rimd, tabledata "G/L Entry" = rimd, tabledata "Approval Entry" = rimd, tabledata "Warehouse Entry" = rimd,
+     tabledata "Value Entry" = rimd, tabledata "Item Register" = rimd, tabledata "G/L Register" = rimd, tabledata "Vat Entry" = rimd, tabledata "Dimension Set Entry" = rimd,
+     tabledata "Service Invoice Header" = rimd, tabledata "Service Cr.Memo Header" = rimd, TableData "Issued Reminder Header" = rimd, tabledata "Issued Reminder Line" = rimd, TableData "Issued Fin. Charge Memo Header" = rimd,
+     tabledata "G/L Entry - VAT Entry Link" = rimd, tabledata "Item Application Entry" = rimd, tabledata "Item Application Entry History" = rimd,
+     tabledata "Return Shipment Header" = rimd, tabledata "Return Shipment Line" = rimd, tabledata "Return Receipt Header" = rimd, tabledata "Return Receipt Line" = rimd,
+     tabledata "Invt. Receipt Header" = rimd, tabledata "Invt. Receipt Line" = rimd, tabledata "Invt. Shipment Header" = rimd, tabledata "Invt. Shipment Line" = rimd,
+     tabledata "Pstd. Phys. Invt. Record Hdr" = rimd, tabledata "Pstd. Phys. Invt. Record Line" = rimd, tabledata "Pstd. Phys. Invt. Order Hdr" = rimd, tabledata "Pstd. Phys. Invt. Order Line" = rimd,
+     tabledata "Bank Account Statement Line" = rimd, tabledata "Change Log Entry" = rimd, tabledata "Posted Approval Entry" = rimd, tabledata "FA Register" = rimd, tabledata "Post Value Entry to G/L" = rimd,
+     tabledata "Job Register" = rimd, tabledata "Reminder/Fin. Charge Entry" = rmid, tabledata "Posted Approval Comment Line" = rmid, tabledata "Dimension Set Tree Node" = rmid, tabledata "Cancelled Document" = rmid;
+
     #region OnRun
     trigger OnRun()
     var
