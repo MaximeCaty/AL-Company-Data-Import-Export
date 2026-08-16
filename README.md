@@ -18,7 +18,7 @@ Use this app to copy a company across different instances, without replacing the
 
 ### Performance Sample
 
-| **Comparison v1.0.0.4 / v2.0.0.0<br>(4 threads - auto - no system fields)** | **Cronus W1 BC230 **      | **Misc company**                |
+| Comparison v1.0.0.4 / v2.0.0.0<br>(4 threads - auto - no system fields)     | Cronus W1 BC230           | Misc company                    |
 |-----------------------------------------------------------------------------|---------------------------|---------------------------------|
 | Database MDF disk size                                                      | 1 GB                      | 45 GB                           |
 | Tables with data                                                            | 548                       | 365                             |
