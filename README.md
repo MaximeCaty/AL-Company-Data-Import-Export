@@ -167,6 +167,8 @@ Binaries streams only contain table raw data, without any headers or separators.
 To reduce files sizes, and fasten file reading & witting, the system detect fields that can use a single byte index instead of litteral values.
 Compression algorithm are doing great at reducing redundant values, but when a field has a list of fixed values referenced many time/in many tables, it is more efficient to write the fixed list only once.
 
+![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/dict-encoding.png?raw=true)
+
 The system detect candidat based on :
  - Option/Enum fields : whenever the option has less than 256 possibles ordinals (almost all) : replace the AL 4 bytes ordinal by a single byte index. Index to ordinal mapping are stored in "optionset.bin" (usualy ~1 KB).
  - Text/Code fields : when they have table relation in other table (foreign key), and when there is <= 254 possible values, and the foreign table contain at least >= 1.86x the parent table to make the dictionnary worth building (eg : there is 100 vendors and 500 vendor ledger entries that contain vendor "No." field).
