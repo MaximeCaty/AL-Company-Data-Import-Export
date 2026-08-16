@@ -1,10 +1,10 @@
 page 51005 "TOO Pipou Archive Files"
 {
+    ApplicationArea = All;
+    Caption = 'Company Archive Files';
+    Editable = false;
     PageType = List;
     SourceTable = "TOO Pipou Archive Files";
-    Editable = false;
-    Caption = 'Pipou Archive Files';
-    ApplicationArea = All;
 
     layout
     {
@@ -38,35 +38,34 @@ page 51005 "TOO Pipou Archive Files"
             action(Download)
             {
                 Caption = 'Decompress & download file';
-                ApplicationArea = All;
                 Image = Download;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
-                    TempBlob: codeunit "Temp Blob";
+                    Arch: Record "TOO Pipou Archive";
+                    TempBlob: Codeunit "Temp Blob";
+                    AdvCompMgt: Codeunit "TOO Advanced Compression Mgt.";
+                    Win: Dialog;
                     InStr: InStream;
                     OutStr: OutStream;
-                    AdvCompMgt: codeunit "TOO Advanced Compression Mgt.";
-                    Win: Dialog;
                     Tofile: Text;
-                    Arch: Record "TOO Pipou Archive";
                 begin
                     Rec.CalcFields(Data);
                     if not Rec.Data.HasValue then
                         Error('No data stored on this record.');
 
                     if Rec."Compression Mode" in [Rec."Compression Mode"::None] then
-                        Rec.Data.CreateInStream(Instr)
+                        Rec.Data.CreateInStream(InStr)
                     else begin
                         // Decompress
                         Win.Open('Decompressing using ' + Format(Rec."Compression Mode"));
-                        Rec.Data.CreateInStream(Instr);
+                        Rec.Data.CreateInStream(InStr);
                         TempBlob.CreateOutStream(OutStr);
-                        AdvCompMgt.Decompress(Instr, OutStr, Rec."Compression Mode");
+                        AdvCompMgt.Decompress(InStr, OutStr, Rec."Compression Mode");
                         TempBlob.CreateInStream(InStr);
                         Win.Close();
                     end;
@@ -76,7 +75,7 @@ page 51005 "TOO Pipou Archive Files"
                         Tofile := CopyStr(Rec."File Name", 1, Rec."File Name".LastIndexOf('.') - 1)
                     else
                         Tofile := Rec."File Name";
-                    Arch.Get(rec."Archive Name", Rec."Archive ID");
+                    Arch.Get(Rec."Archive Name", Rec."Archive ID");
                     if Rec."Column Storage" then
                         Tofile += '.colstore'
                     else

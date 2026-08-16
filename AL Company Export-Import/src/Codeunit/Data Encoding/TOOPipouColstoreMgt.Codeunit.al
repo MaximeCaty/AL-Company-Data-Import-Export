@@ -3,25 +3,23 @@ codeunit 51013 "TOO Pipou colstore Mgt."
     #region Read
     procedure OpenColStore(ArchiveFile: Record "TOO Pipou Archive Files")
     var
-        ColStoreFileInStr: InStream;
+        Hash: Codeunit "Cryptography Management";
         DecompressedBlob: Codeunit "Temp Blob";
-        DecompressedOutStr: OutStream;
-        DecompressedInStr: InStream;
-        TarEntries: List of [Text];
         MetadataBlob: Codeunit "Temp Blob";
-        MetadataOutStr: OutStream;
+        ColStoreFileInStr: InStream;
+        DecompressedInStr: InStream;
         MetadataInStr: InStream;
         I: Integer;
-        ColumnCompressedBlob: Codeunit "Temp Blob";
-        ColumnOutStr: OutStream;
-        ColumnInStr: InStream;
-        CalulatedHash: Text;
-        Hash: Codeunit "Cryptography Management";
+        TarEntries: List of [Text];
         HashAlgorithmType: Option MD5,SHA1,SHA256,SHA384,SHA512;
+        ColumnOutStr: OutStream;
+        DecompressedOutStr: OutStream;
+        MetadataOutStr: OutStream;
+        CalulatedHash: Text;
         MetaDataFile: Text;
     begin
         ArchiveFile.TestField("Column Storage");
-        ArchiveFile.data.CreateInStream(ColStoreFileInStr);
+        ArchiveFile.Data.CreateInStream(ColStoreFileInStr);
         if (ArchiveFile."Compression Mode" in [ArchiveFile."Compression Mode"::None]) then
             // NO COMPRESSION
             TarMgt.OpenTarArchive(ColStoreFileInStr)
@@ -73,6 +71,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
             if ColumnInStrArr[I].Length = 0 then
                 Error('Colstore file "%1" : extracted column data "%2" is empty.', ArchiveFile."File Name", ColumnFileName[I]);
         end;
+
     end;
 
     procedure GetColumnInStr(ColumnIndex: Integer; var InStr: InStream)
@@ -102,13 +101,12 @@ codeunit 51013 "TOO Pipou colstore Mgt."
     #region Read Col Meta
     local procedure ParseColumnsFromInStream(JsonInStream: InStream)
     var
+        i: Integer;
+        ColumnsArray: JsonArray;
+        ColumnObject: JsonObject;
         RootObject: JsonObject;
         ColumnsToken: JsonToken;
-        ColumnsArray: JsonArray;
         ColumnToken: JsonToken;
-        ColumnObject: JsonObject;
-        i: Integer;
-        CompressionText: Text;
     begin
         // Clear previous data
         Clear(ColumnOriginalFieldID);
@@ -162,7 +160,7 @@ codeunit 51013 "TOO Pipou colstore Mgt."
         ColCount := 0;
     end;
 
-    procedure AddColumn(Archive: Record "TOO Pipou Archive"; var ArchiveFile: Record "TOO Pipou Archive Files"; var Tablefields: Record "TOO Pipou Archive Fields"; var ColumnBlob: codeunit "Temp Blob")
+    procedure AddColumn(Archive: Record "TOO Pipou Archive"; var ArchiveFile: Record "TOO Pipou Archive Files"; var Tablefields: Record "TOO Pipou Archive Fields"; var ColumnBlob: Codeunit "Temp Blob")
     var
         InStr: InStream;
     begin
@@ -193,43 +191,45 @@ codeunit 51013 "TOO Pipou colstore Mgt."
         WriteColumnMetadata();
         TarMgt.SaveTarArchive(OutStream);
     end;
+
     #endregion
 
 
     #region CompressCol
     local procedure CompressColumn(var Archive: Record "TOO Pipou Archive"; var TempBlobToCompress: Codeunit "Temp Blob"; var CopyToOutStream: OutStream) CompressionUsed: Enum "TOO Compression Algo."
     var
-        InStr: InStream;
         PipouExportMgt: Codeunit "TOO Pipou Export Data";
+        InStr: InStream;
     begin
         // Compress
         TempBlobToCompress.CreateInStream(InStr);
         CompressionUsed := PipouExportMgt.DetectBestCompression(Archive, InStr);
-        AdvCompress.Compress(InStr, CopyToOutStream, CompressionUsed);
+        AdvCompress.Compress(InStr, CopyToOutStream, CompressionUsed, Archive."Compression Level");
     end;
     #endregion
 
     #region Write Col Meta
     local procedure WriteColumnMetadata()
     var
-        SerializedJson: Text;
-        MetaJson: JsonObject;
+        I: Integer;
         ColumnsArray: JsonArray;
         ColumnJson: JsonObject;
-        I: Integer;
+        MetaJson: JsonObject;
+        SerializedJson: Text;
     begin
         // Create the JSON structure:
         // {
         //   "count": 10,
         //   "columns": [
-        //     { "Field ID": 1, 
-        //       "File Name": "field_1.gz", 
-        //       "File Compression": "Gzip" 
+        //     { "Field ID": 1,
+        //       "File Name": "field_1.gz",
+        //       "File Compression": "Gzip"
         //     },
         //     ...
         //   ]
         // }
-        if MetaWritten then exit;
+        if MetaWritten then
+            exit;
         MetaJson.Add('count', ColCount);
         Clear(ColumnsArray);
         for I := 1 to ColCount do begin
@@ -249,13 +249,13 @@ codeunit 51013 "TOO Pipou colstore Mgt."
 
 
     var
-        MetaWritten: Boolean;
+        ColumnBlobArr: array[512] of Codeunit "Temp Blob";
         AdvCompress: Codeunit "TOO Advanced Compression Mgt.";
         TarMgt: Codeunit "TOO TAR Mgt.";
+        MetaWritten: Boolean;
+        ColumnInStrArr: array[512] of InStream;
         ColCount: Integer;
-        ColumnOriginalFieldID: Array[1024] of Integer;
-        ColumnFileName: Array[1024] of Text[150];
-        ColumnBlobArr: array[1024] of Codeunit "Temp Blob";
-        ColumnInStrArr: array[1024] of InStream;
+        ColumnOriginalFieldID: array[512] of Integer;
         ColStoreMetaDataFile: Label 'columns.json';
+        ColumnFileName: array[512] of Text[150];
 }

@@ -1,13 +1,43 @@
 codeunit 51004 "TOO Pipou Mgt."
 {
-    procedure Initialize(SetBlobMaxSize: Integer; ClassifiedDataExportHandling: Option "Keep","Empty","Randomize")
+    SingleInstance = true;
+
+    procedure Initialize(SetBlobMaxSize: Integer; ClassifiedDataExportHandling: Option Keep,Empty,Randomize)
     begin
         CR[1] := 13;
         LF[1] := 10;
         OneByte := 1;
-        Logentry := 0;
         BlobMaxSize := SetBlobMaxSize;
         ClassifiedDataHandling := ClassifiedDataExportHandling;
+    end;
+
+    procedure ArchiveFormatVersion(): Integer
+    begin
+        // 2 : may carry FK dictionaries, and "Use Dictionary" is stamped by the export with the encoding the column
+        //     actually got, so the import reads it instead of replaying the export rules.
+        // 0 : no dictionaries, and no version written on the archive at all.
+        exit(2);
+    end;
+
+    procedure IsFieldAnonymized(var ArchiveField: Record "TOO Pipou Archive Fields"; ClassifiedHandling: Option Keep,Empty,Randomize): Boolean
+    var
+        DataClassifOption: Option CustomerContent,ToBeClassified,EndUserIdentifiableInformation,AccountData,EndUserPseudonymousIdentifiers,OrganizationIdentifiableInformation,SystemMetadata;
+    begin
+        // Columns the export empties instead of exporting. Shared by the export and the import : the export drops them
+        // out of the dictionary group, so an import reaching a different verdict decodes a plain column as ordinals.
+        // Tested in steps : AL evaluates both sides of an "and" whatever the first one says.
+        if ClassifiedHandling = ClassifiedHandling::Keep then
+            exit(false);
+        if ArchiveField."Part of Primary Key" then
+            exit(false);
+        if not (ArchiveField."Field DataClassification" in
+                [DataClassifOption::CustomerContent, DataClassifOption::EndUserIdentifiableInformation,
+                 DataClassifOption::EndUserPseudonymousIdentifiers, DataClassifOption::OrganizationIdentifiableInformation]) then
+            exit(false);
+        exit(ArchiveField."Field Name".ToLower() in
+            ['name', 'email', 'e-mail', 'mail', 'phone no.', 'fax no.', 'phone', 'mobile phone no.', 'mobile no.',
+             'birthday', 'birth date', 'address', 'address 1', 'address 2', 'street', 'city', 'post code', 'country',
+             'family', 'title', 'martial', 'zip', 'zip code']);
     end;
 
     procedure GetMajorBCVersion(): Integer
@@ -17,7 +47,7 @@ codeunit 51004 "TOO Pipou Mgt."
         Major: Integer;
         VersionText: Text;
     begin
-        VersionText := AppSysConstants.ApplicationVersion();
+        VersionText := AppSysConstants.PlatformProductVersion();
         DotPos := StrPos(VersionText, '.');
         if DotPos > 1 then
             if Evaluate(Major, CopyStr(VersionText, 1, DotPos - 1)) then
@@ -91,29 +121,19 @@ codeunit 51004 "TOO Pipou Mgt."
     var
         Log: Record "TOO Pipou Import Log";
     begin
-        if Logentry = 0 then begin
-            Log.SetRange("Archive Name", Chunk."Archive Name");
-            Log.SetRange("Archive ID", Chunk."Archive ID");
-            if Log.FindLast() then
-                Logentry := Log."Entry No." + 1
-            else
-                Logentry := 1;
-        end;
         Log.Init();
         Log."Archive Name" := Chunk."Archive Name";
         Log."Archive ID" := Chunk."Archive ID";
-        Log."Entry No." := Logentry;
         Log."Thread No." := Chunk."Affected Thread";
         Log."Chunk Entry No." := Chunk."File Name";
-        log."Record ID" := RecID;
-        log.Status := Status;
-        log.Action := Action;
-        log.Message := Copystr(ErrMsg, 1, 2048);
-        log.CallStack := CopyStr(CallStack, 1, 2048);
-        log."Table ID" := Chunk."Table ID";
-        log."Table Name" := Chunk."Table Name";
-        log.Insert(true);
-        Logentry += 1;
+        Log."Record ID" := RecID;
+        Log.Status := Status;
+        Log.Action := Action;
+        Log.Message := CopyStr(ErrMsg, 1, 2048);
+        Log.CallStack := CopyStr(CallStack, 1, 2048);
+        Log."Table ID" := Chunk."Table ID";
+        Log."Table Name" := Chunk."Table Name";
+        Log.Insert(true);
     end;
     #endregion
 
@@ -161,8 +181,7 @@ codeunit 51004 "TOO Pipou Mgt."
     var
         OneByte: Byte;
         BlobMaxSize: Integer;
-        Logentry: Integer;
-        ClassifiedDataHandling: Option "Keep","Empty","Randomize";
+        ClassifiedDataHandling: Option Keep,Empty,Randomize;
         CR: Text[1];
         LF: Text[1];
 

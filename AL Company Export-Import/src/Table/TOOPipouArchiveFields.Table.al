@@ -1,64 +1,31 @@
 table 51008 "TOO Pipou Archive Fields"
 {
     DataClassification = SystemMetadata;
+    DataPerCompany = false;
     DrillDownPageId = "TOO Pipou Archive Fields";
     LookupPageId = "TOO Pipou Archive Fields";
 
     fields
     {
-        field(1; "Archive ID"; Guid)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(10; "Table ID"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(30; "Field ID"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(40; "Field Name"; Text[150])
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(45; "Field Caption"; Text[150])
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(50; "Field Type"; enum "TOO Fields Types")
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(55; "Field Type Name"; Text[30])
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(60; "Max Length"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(70; "Part of Primary Key"; Boolean)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(80; "Empty In Chunks List"; Text[150])
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(100; "Field DataClassification"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
+        field(1; "Archive ID"; Guid) { }
+        field(10; "Table ID"; Integer) { }
+        field(30; "Field ID"; Integer) { }
+        field(40; "Field Name"; Text[150]) { }
+        field(45; "Field Caption"; Text[150]) { }
+        field(50; "Field Type"; Enum "TOO Fields Types") { }
+        field(55; "Field Type Name"; Text[30]) { }
+        field(60; "Max Length"; Integer) { }
+        field(70; "Part of Primary Key"; Boolean) { }
+        field(80; "Empty In Chunks List"; Text[150]) { }
+        field(100; "Field DataClassification"; Integer) { }
         field(990; "Matched Table ID"; Integer)
         {
+            CalcFormula = lookup("TOO Pipou Archive Tables"."Matched Table ID" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = lookup("TOO Pipou Archive Tables"."Matched Table ID" Where("Archive ID" = field("Archive ID"), "Table ID" = Field("Table ID")));
         }
         field(1000; "Matched Field ID"; Integer)
         {
-            DataClassification = SystemMetadata;
             TableRelation = Field where(TableNo = field("Matched Table ID"));
 
             trigger OnValidate()
@@ -71,9 +38,19 @@ table 51008 "TOO Pipou Archive Fields"
         }
         field(1010; "Matched Field Name"; Text[150])
         {
+            CalcFormula = lookup(Field.FieldName where("No." = field("Matched Field ID"), TableNo = field("Table ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = lookup(Field.FieldName where("No." = field("Matched Field ID"), TableNo = field("Table ID")));
+        }
+        field(1100; "Use Dictionary"; Boolean)
+        {
+            Caption = 'Use Dictionary', Comment = 'Utilise un dictionnaire';
+            Editable = false;
+        }
+        field(1110; "Dictionary File Name"; Text[70])
+        {
+            Caption = 'Dictionary', Comment = 'Dictionnaire';
+            Editable = false;
         }
     }
 

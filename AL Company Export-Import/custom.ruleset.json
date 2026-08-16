@@ -1,0 +1,107 @@
+{
+    "name": "TOO Cloud Compatibility",
+    "description": "Keeps cloud/SaaS blockers visible as errors and demotes stylistic noise so real findings are not buried. Rule IDs below were verified by compiling this project with alc.exe + the shipped analyzers.",
+    "rules": [
+        {
+            "id": "PTE0004",
+            "action": "Error",
+            "justification": "Every table needs a matching permission set or the extension cannot be installed/used on a cloud tenant."
+        },
+        {
+            "id": "AL0273",
+            "action": "Error",
+            "justification": "Area-type name used as a control name. Documented to become a hard error in a future release; fix before it blocks a cloud upgrade."
+        },
+        {
+            "id": "AL0523",
+            "action": "Error",
+            "justification": "Duplicate method signature on a table. Documented to become a hard error in a future release."
+        },
+        {
+            "id": "AL0603",
+            "action": "Warning",
+            "justification": "Implicit enum/integer conversions. All current hits are this project's own enums, not deprecated platform APIs, so this is a code-health signal rather than a cloud blocker."
+        },
+        {
+            "id": "AA0131",
+            "action": "Error",
+            "justification": "Placeholder count does not match the arguments. Throws at runtime when that path executes; a cloud tenant gives no debugger to catch it."
+        },
+        {
+            "id": "AA0139",
+            "action": "Warning",
+            "justification": "Possible string overflow. In SaaS an overflow is a hard runtime error with no on-prem debugging available."
+        },
+        {
+            "id": "AA0136",
+            "action": "Warning",
+            "justification": "Unreachable code - usually a logic slip worth reviewing."
+        },
+        {
+            "id": "AA0231",
+            "action": "Warning",
+            "justification": "StrSubstNo inside Error breaks telemetry/translation of error messages in SaaS."
+        },
+
+        {
+            "id": "AA0218",
+            "action": "Hidden",
+            "justification": "Missing ToolTip. Not cloud-relevant; 145 hits would bury real findings."
+        },
+        {
+            "id": "AA0247",
+            "action": "Hidden",
+            "justification": "Label/comment conventions. Not cloud-relevant."
+        },
+        {
+            "id": "AA0139",
+            "action": "Warning",
+            "justification": "Possible string overflow. Real bug class, but not a cloud blocker; keep as warning."
+        },
+        {
+            "id": "AA0074",
+            "action": "Hidden",
+            "justification": "Label naming conventions. Not cloud-relevant."
+        },
+        {
+            "id": "AA0470",
+            "action": "Hidden",
+            "justification": "Label placeholder comments. Not cloud-relevant."
+        },
+        {
+            "id": "AA0137",
+            "action": "Hidden",
+            "justification": "Unused variables. Expected noise from #if ONPREM gating in this project."
+        },
+        {
+            "id": "AA0005",
+            "action": "Hidden",
+            "justification": "Redundant begin/end. Stylistic."
+        },
+        {
+            "id": "AA0021",
+            "action": "Hidden",
+            "justification": "Variable declaration ordering. Stylistic."
+        },
+        {
+            "id": "AA0217",
+            "action": "Hidden",
+            "justification": "Label placeholder usage. Stylistic."
+        },
+        {
+            "id": "AA0228",
+            "action": "Hidden",
+            "justification": "ToolTip punctuation. Stylistic."
+        },
+        {
+            "id": "AA0244",
+            "action": "Hidden",
+            "justification": "Object/field naming length conventions. Not cloud-relevant."
+        },
+        {
+            "id": "AA0206",
+            "action": "Hidden",
+            "justification": "Variable assigned but never used. Expected from ONPREM gating."
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\bin\Release\BCBulkInsertHelper.dll
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\bin\Release\BCBulkInsertHelper.pdb
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\bin\Release\Microsoft.Data.SqlClient.dll
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\obj\Release\BCBulkInsertHelper.csproj.AssemblyReference.cache
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\obj\Release\BCBulkInsertHelper.csproj.CoreCompileInputs.cache
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\obj\Release\BCBulkIn.428F4F9D.Up2Date
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\obj\Release\BCBulkInsertHelper.dll
+d:\bc_eca\ECA Tools\DotNet\BCBulkInsertHelper\obj\Release\BCBulkInsertHelper.pdb

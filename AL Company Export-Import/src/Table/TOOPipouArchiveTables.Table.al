@@ -1,56 +1,37 @@
 table 51007 "TOO Pipou Archive Tables"
 {
     DataClassification = SystemMetadata;
+    DataPerCompany = false;
     DrillDownPageId = "TOO Pipou Archive Tables";
     LookupPageId = "TOO Pipou Archive Tables";
 
     fields
     {
-        field(1; "Archive ID"; Guid)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(10; "Table ID"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(20; "Table Name"; Text[150])
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(25; "Table Caption"; Text[150])
-        {
-            DataClassification = SystemMetadata;
-        }
+        field(1; "Archive ID"; Guid) { }
+        field(10; "Table ID"; Integer) { }
+        field(20; "Table Name"; Text[150]) { }
+        field(25; "Table Caption"; Text[150]) { }
         field(30; DataPerCompany; Boolean)
         {
-            DataClassification = SystemMetadata;
+            Editable = false;
         }
-        field(40; "No. of Records"; Integer)
-        {
-            DataClassification = SystemMetadata;
-        }
-        field(90; "Table DataClassification"; Integer)
-        {
-
-        }
+        field(40; "No. of Records"; Integer) { }
+        field(90; "Table DataClassification"; Integer) { }
         field(100; "No. Fields"; Integer)
         {
+            CalcFormula = count("TOO Pipou Archive Fields" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = count("TOO Pipou Archive Fields" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID")));
         }
-        field(900; "Select For Import"; Boolean)
-        {
-        }
+        field(900; "Select For Import"; Boolean) { }
         field(910; "Import Completed"; Boolean)
         {
-            FieldClass = FlowField;
             CalcFormula = - exist("TOO Pipou Archive Files" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID"), Imported = const(false)));
+            Editable = false;
+            FieldClass = FlowField;
         }
         field(1000; "Matched Table ID"; Integer)
         {
-            DataClassification = SystemMetadata;
             TableRelation = "Table Metadata";
 
             trigger OnValidate()
@@ -72,28 +53,54 @@ table 51007 "TOO Pipou Archive Tables"
         }
         field(1010; "Matched Table Name"; Text[150])
         {
+            CalcFormula = lookup("Table Metadata".Name where(ID = field("Matched Table ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = lookup("Table Metadata".Name where(ID = field("Matched Table ID")));
         }
         field(1020; "Match Status"; Enum "TOO Table Match Status")
         {
-            DataClassification = SystemMetadata;
             Editable = false;
         }
         field(1030; "PreImport Truncated"; Boolean)
         {
             Editable = false;
         }
-        field(2000; "Affected Thread"; Integer)
+        field(1040; "Indexes Disabled"; Boolean)
         {
-            DataClassification = SystemMetadata;
+            Caption = 'Indexes Disabled', Comment = 'Index désactivés';
+            Editable = false;
+        }
+        field(1050; "Disabled Indexes Count"; Integer)
+        {
+            Caption = 'Disabled Indexes', Comment = 'Index désactivés';
+            Editable = false;
+        }
+        field(1100; "Is Dictionary Source"; Boolean)
+        {
+            Caption = 'Dictionary Source', Comment = 'Source de dictionnaire';
+            Editable = false;
+        }
+        field(1110; "Dictionary Entry Count"; Integer)
+        {
+            Caption = 'Dictionary Entries', Comment = 'Entrées du dictionnaire';
+            Editable = false;
+        }
+        field(1120; "Export Order"; Integer)
+        {
+            Caption = 'Export Order', Comment = 'Ordre d''export';
+            Editable = false;
+        }
+        field(2000; "Affected Thread"; Integer) { }
+        field(2010; "Thread Weight"; Integer)
+        {
+            Caption = 'Thread Weight', Comment = 'Poids pour les threads';
+            Editable = false;
         }
         field(3000; "Rem. Rec. To Import"; Integer)
         {
+            CalcFormula = sum("TOO Pipou Archive Files"."Number Of Recs" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID"), Imported = const(false)));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = sum("TOO Pipou Archive Files"."Number Of Recs" where("Archive ID" = field("Archive ID"), "Table ID" = field("Table ID"), Imported = Const(false)));
         }
     }
 
@@ -103,6 +110,9 @@ table 51007 "TOO Pipou Archive Tables"
         {
             Clustered = true;
         }
+        key(WeightSort; "Archive ID", "Thread Weight") { }
+        // Covers the table loop of an export thread : range on the thread, sorted by export order
+        key(ExportOrder; "Archive ID", "Affected Thread", "Export Order", "Table ID") { }
     }
 
     procedure UpdateMatchStatus()

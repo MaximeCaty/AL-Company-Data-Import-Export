@@ -1,5 +1,8 @@
 codeunit 51002 "TOO Advanced Compression Mgt."
 {
+    SingleInstance = true;
+
+
     procedure TextToEnum(CompressionModeText: Text) Compression: Enum "TOO Compression Algo."
     begin
         case CompressionModeText.ToLower().Trim() of
@@ -9,14 +12,23 @@ codeunit 51002 "TOO Advanced Compression Mgt."
                 Compression := Compression::zStandard;
             '4', 'libbsc', 'bsc':
                 Compression := Compression::libbsc;
-            '10', 'MCMX', 'mcmx':
-                Compression := Compression::MCMX;
             '5', 'auto':
                 Compression := Compression::"Auto (On-Premise)";
+            '6', 'cloud':
+                Compression := Compression::"Auto (Cloud)";
+            '7', 'kanzi', 'knz':
+                Compression := Compression::kanzi;
         end;
     end;
     #region Gen Comp/Dec
-    procedure Compress(InputStream: Instream; OutputStream: OutStream; CompressMode: enum "TOO Compression Algo.")
+    procedure Compress(InputStream: InStream; OutputStream: OutStream; CompressMode: Enum "TOO Compression Algo.")
+    var
+        CompressLevel: Enum "TOO Compression Level";
+    begin
+        Compress(InputStream, OutputStream, CompressMode, CompressLevel::High);
+    end;
+
+    procedure Compress(InputStream: InStream; OutputStream: OutStream; CompressMode: Enum "TOO Compression Algo."; CompressLevel: Enum "TOO Compression Level")
     var
         CompressMgt: Codeunit "Data Compression";
     begin
@@ -30,20 +42,50 @@ codeunit 51002 "TOO Advanced Compression Mgt."
 
 #if ONPREM
             CompressMode::zStandard:
-                ZStandardCompressStream(InputStream, OutputStream, 12); // Default level is 3 (1 - 19) : 3 = "very fast", 9 = "optimal", 19-22 = ultra
+                ZstandardCompressStream(InputStream, OutputStream, ZstandardLevel(CompressLevel)); // Default level is 3 (1 - 22) : 3 = "very fast", 9 = "optimal", 19-22 = ultra
 
             CompressMode::libbsc:
-                LibbscCompressStream(InputStream, OutputStream, 2); // Default level is 1 (0, 1 or 2) 2 have the best ratio, 0 and 1 does not have significent speed difference
+                LibbscCompressStream(InputStream, OutputStream, LibbscArguments(CompressLevel));
 
-            CompressMode::MCMX:
-                McmxCompressStream(InputStream, OutputStream, 'm', 2); // Level form lowest to highest : z, t, f, m, h, x - Note "h" and "x" require twice RAM, use with caution
+            CompressMode::kanzi:
+                KanziCompressStream(InputStream, OutputStream);
 #endif
             else
-                error('Compression method "%1" is not supported', CompressMode);
+                Error('Compression method "%1" is not supported', CompressMode);
         end
     end;
 
-    procedure Decompress(InputStream: Instream; OutputStream: OutStream; CompressMode: enum "TOO Compression Algo.")
+#if ONPREM
+    /// <summary>
+    /// zStandard compression level used for each compression level preset.
+    /// </summary>
+    procedure ZstandardLevel(CompressLevel: Enum "TOO Compression Level") Level: Integer
+    begin
+        case CompressLevel of
+            CompressLevel::Medium:
+                exit(12);
+            CompressLevel::Extreme:
+                exit(19);
+            else
+                exit(15); // High
+        end;
+    end;
+
+    /// <summary>
+    /// bsc.exe compression arguments used for each compression level preset (block size is added by the caller).
+    /// </summary>
+    procedure LibbscArguments(CompressLevel: Enum "TOO Compression Level") Arguments: Text
+    begin
+        case CompressLevel of
+            CompressLevel::Medium:
+                exit('-e2 -p');
+            else
+                exit('-e2 -r -s'); // High and Extreme (Extreme uses Kanzi when available, bsc is the fallback)
+        end;
+    end;
+#endif
+
+    procedure Decompress(InputStream: InStream; OutputStream: OutStream; CompressMode: Enum "TOO Compression Algo.")
     var
         CompressMgt: Codeunit "Data Compression";
     begin
@@ -63,11 +105,11 @@ codeunit 51002 "TOO Advanced Compression Mgt."
             CompressMode::libbsc:
                 LibbscDecompressStream(InputStream, OutputStream);
 
-            CompressMode::MCMX:
-                McmxDecompressStream(InputStream, OutputStream);
+            CompressMode::kanzi:
+                KanziDecompressStream(InputStream, OutputStream);
 #endif
             else
-                error('Compression method unsupported');
+                Error('Compression method unsupported');
         end
     end;
 
@@ -77,6 +119,12 @@ codeunit 51002 "TOO Advanced Compression Mgt."
     #region Libbsc
 #if ONPREM
     procedure LibbscCompressStream(InStream: InStream; OutStream: OutStream; CompressionLevel: Integer) CompressedSize: Integer
+    begin
+        // Entropy coder level only (0, 1 or 2), 2 has the best ratio, 0 and 1 have no significant speed difference
+        exit(LibbscCompressStream(InStream, OutStream, StrSubstNo('-e%1 -r', CompressionLevel)));
+    end;
+
+    procedure LibbscCompressStream(InStream: InStream; OutStream: OutStream; CompressionArguments: Text) CompressedSize: Integer
     var
         CompressedFile: File;
         FileOutStr: OutStream;
@@ -93,8 +141,8 @@ codeunit 51002 "TOO Advanced Compression Mgt."
         CopyStream(FileOutStr, InStream);
         CompressedFile.Close();
 
-        // Prepare bsc compression command (using 50MB max block size)
-        ExeProcessStartInfo.Arguments := STRSUBSTNO('e "%1" "%2" -e%3 -p -b75', TempFileName, TempFileName + '.bsc', CompressionLevel);
+        // Prepare bsc compression command
+        ExeProcessStartInfo.Arguments := StrSubstNo('e "%1" "%2" %3 -b200', TempFileName, TempFileName + '.bsc', CompressionArguments);
         ExeProcess.StartInfo := ExeProcessStartInfo;
 
         // Start process and wait
@@ -139,7 +187,7 @@ codeunit 51002 "TOO Advanced Compression Mgt."
         DecompressedFile.Close();
 
         // Run bsc decompression command
-        ExeProcessStartInfo.Arguments := STRSUBSTNO('d "%1" "%2"', TempFileName, TempFileName + '.dec');
+        ExeProcessStartInfo.Arguments := StrSubstNo('d "%1" "%2"', TempFileName, TempFileName + '.dec');
         ExeProcess.StartInfo := ExeProcessStartInfo;
 
         // Start process and wait
@@ -167,19 +215,24 @@ codeunit 51002 "TOO Advanced Compression Mgt."
     end;
 
     local procedure InitBsc()
+    begin
+        InitExe('bsc.exe');
+    end;
+
+    local procedure InitExe(ExeName: Text)
     var
         fileMgt: Codeunit "File Management";
     begin
-        //if BscPath = '' then begin
-        ExePath := System.ApplicationPath();
-        ExePath += 'Add-ins\bsc.exe';
-        if not Exists(ExePath) then
-            if not Exists(System.ApplicationPath() + 'bsc.exe') then
-                Error('Unable to locate the libbsc executable (bsc.exe). The program should be placed in addin folder : %1', System.ApplicationPath());
+        ExePath := System.ApplicationPath() + 'Add-ins\' + ExeName;
+        if not Exists(ExePath) then begin
+            ExePath := System.ApplicationPath() + ExeName;
+            if not Exists(ExePath) then
+                Error('Unable to locate the executable %1. The program should be placed in addin folder : %2', ExeName, System.ApplicationPath() + 'Add-ins\');
+        end;
 
         // look for ram disk
         if Exists('R:\Temp') then
-            TempFileName := 'R:\Temp\libbsc' + DELCHR(Format(CreateGuid()), '=', '{} -') + '.tmp'
+            TempFileName := 'R:\Temp\libbsc' + DelChr(Format(CreateGuid()), '=', '{} -') + '.tmp'
         else
             TempFileName := fileMgt.ServerTempFileName('');
         if Erase(TempFileName) then; // in case last batch bugged
@@ -195,126 +248,64 @@ codeunit 51002 "TOO Advanced Compression Mgt."
 #endif
     #endregion
 
-    #region MCMX
+    #region Kanzi
 #if ONPREM
-    procedure MCMXCompressStream(InStream: InStream; OutStream: OutStream; CompressionLevel: Text[1]; Threads: Integer) CompressedSize: Integer
-    var
-        CompressedFile: File;
-        FileOutStr: OutStream;
+    procedure KanziCompressStream(InStream: InStream; OutStream: OutStream)
     begin
-        InitMcmx();
-
-        // Save the stream to a temp file on the server
-        if Erase(TempFileName) then;
-        CompressedFile.WriteMode(true);
-        if not CompressedFile.Create(TempFileName) then
-            Error('Unable to create file %1', TempFileName);
-        CompressedFile.CreateOutStream(FileOutStr);
-        InStream.ResetPosition();
-        CopyStream(FileOutStr, InStream);
-        CompressedFile.Close();
-
-        // Prepare compression command (using 50MB max block size)
-        if Threads > 1 then
-            ExeProcessStartInfo.Arguments := STRSUBSTNO('-%1 -threads %2 "%3" "%4"', CompressionLevel.ToLower(), Threads, TempFileName, TempFileName + '.mcmx', CompressionLevel)
-        else
-            ExeProcessStartInfo.Arguments := STRSUBSTNO('-%1 "%2" "%3"', CompressionLevel.ToLower(), TempFileName, TempFileName + '.mcmx', CompressionLevel);
-        ExeProcess.StartInfo := ExeProcessStartInfo;
-
-        // Start process and wait
-        if not ExeProcess.Start() then begin
-            if Erase(TempFileName) then;
-            Error('Failed to start mcmx.exe process.');
-        end;
-        ExeProcess.WaitForExit();
-
-        // Remove input file
-        if Erase(TempFileName) then;
-
-        if ExeProcess.ExitCode() <> 0 then begin
-            if Erase(TempFileName + '.mcmx') then; // remove output if any
-            Error('Compression process failed. Exit code: %1', ExeProcess.ExitCode());
-        end;
-        ExeProcess.Close();
-
-        // Read the output file in blob
-        CompressedFile.Open(TempFileName + '.mcmx');
-        CompressedFile.CreateInStream(InStream);
-        CopyStream(OutStream, InStream);
-        CompressedFile.Close();
-        if Erase(TempFileName + '.mcmx') then;
+        RunExeOnStream('kanzi.exe', '-c --input="%1" --output="%2" -f -t TEXT+UTF -e TPAQ -b 4m -j 8', '.knz', InStream, OutStream);
     end;
 
-    procedure McmxDecompressStream(InStream: InStream; OutStream: OutStream) DecompressedSize: Integer
-    var
-        DecompressedFile: File;
-        FileOutStr: OutStream;
+    procedure KanziDecompressStream(InStream: InStream; OutStream: OutStream)
     begin
-        InitMcmx();
+        RunExeOnStream('kanzi.exe', '-d --input="%1" --output="%2"', '.dec', InStream, OutStream);
+    end;
+
+    /// <summary>
+    /// Writes the input stream to a temp file, runs ExeName with ArgsPattern (%1 = input file, %2 = output file),
+    /// then copies the produced file back into OutStream. Temp files are always erased.
+    /// </summary>
+    local procedure RunExeOnStream(ExeName: Text; ArgsPattern: Text; OutSuffix: Text; InStream: InStream; OutStream: OutStream)
+    var
+        WorkFile: File;
+        FileOutStr: OutStream;
+        OutFileName: Text;
+    begin
+        InitExe(ExeName);
+        OutFileName := TempFileName + OutSuffix;
 
         // Save the stream to a temp file on the server
-        if Erase(TempFileName) then;
-        DecompressedFile.WriteMode(true);
-        if not DecompressedFile.Create(TempFileName) then
+        if Erase(OutFileName) then;
+        WorkFile.WriteMode(true);
+        if not WorkFile.Create(TempFileName) then
             Error('Unable to create file %1', TempFileName);
-        DecompressedFile.CreateOutStream(FileOutStr);
+        WorkFile.CreateOutStream(FileOutStr);
         InStream.ResetPosition();
         CopyStream(FileOutStr, InStream);
-        DecompressedFile.Close();
+        WorkFile.Close();
 
-        // Run bsc decompression command
-        ExeProcessStartInfo.Arguments := STRSUBSTNO('d "%1" "%2"', TempFileName, TempFileName + '.dec');
+        ExeProcessStartInfo.Arguments := StrSubstNo(ArgsPattern, TempFileName, OutFileName);
         ExeProcess.StartInfo := ExeProcessStartInfo;
 
-        // Start process and wait
         if not ExeProcess.Start() then begin
             if Erase(TempFileName) then;
-            Error('Failed to start mcmx.exe process.');
+            Error('Failed to start %1 process.', ExeName);
         end;
-
         ExeProcess.WaitForExit();
 
         if Erase(TempFileName) then;
 
         if ExeProcess.ExitCode() <> 0 then begin
-            if Erase(TempFileName + '.dec') then;
-            Error('Decompression process failed. Exit code: %1', ExeProcess.ExitCode());
+            if Erase(OutFileName) then;
+            Error('%1 process failed. Exit code: %2', ExeName, ExeProcess.ExitCode());
         end;
         ExeProcess.Close();
 
-        // Read decompressed file into OutStream
-        DecompressedFile.Open(TempFileName + '.dec');
-        DecompressedFile.CreateInStream(InStream);
+        // Read the output file back into the stream
+        WorkFile.Open(OutFileName);
+        WorkFile.CreateInStream(InStream);
         CopyStream(OutStream, InStream);
-        DecompressedFile.Close();
-        if Erase(TempFileName + '.dec') then;
-    end;
-
-    local procedure InitMcmx()
-    var
-        fileMgt: Codeunit "File Management";
-    begin
-        //if BscPath = '' then begin
-        ExePath := System.ApplicationPath();
-        ExePath += 'Add-ins\mcmx.exe';
-        if not Exists(ExePath) then
-            if not Exists(System.ApplicationPath() + 'mcmx.exe') then
-                Error('Unable to locate MCMX executable (mcmx.exe). The program should be placed in addin folder : %1', System.ApplicationPath());
-
-        // look for ram disk
-        if Exists('R:\Temp') then
-            TempFileName := 'R:\Temp\mcmx' + DELCHR(Format(CreateGuid()), '=', '{} -') + '.tmp'
-        else
-            TempFileName := fileMgt.ServerTempFileName('');
-        if Erase(TempFileName) then; // in case last batch bugged
-
-        ExeProcess := ExeProcess.Process();
-        ExeProcessStartInfo := ExeProcessStartInfo.ProcessStartInfo();
-        ExeProcessStartInfo.FileName := ExePath;
-        ExeProcessStartInfo.UseShellExecute := false;
-        ExeProcessStartInfo.CreateNoWindow := true;
-        ExeProcess.StartInfo := ExeProcessStartInfo;
-        //end;
+        WorkFile.Close();
+        if Erase(OutFileName) then;
     end;
 #endif
     #endregion
@@ -323,13 +314,13 @@ codeunit 51002 "TOO Advanced Compression Mgt."
 #if ONPREM
     procedure ZstandardCompressStream(InStream: InStream; OutStream: OutStream; CompressionLevel: Integer)
     var
-        DotNetByte: DotNet Byte;
-        DotNetArray: DotNet Array;
-        CompressedStream: Dotnet MemoryStream;
         Compressed: DotNet Array;
+        DotNetArray: DotNet Array;
+        DotNetByte: DotNet Byte;
+        CompressedStream: DotNet MemoryStream;
         DotNetStream: DotNet Stream;
-        Compressor: DotNet TOOZstdCompressor;
         CompressionOptions: DotNet TOOZstdCompressionOptions;
+        Compressor: DotNet TOOZstdCompressor;
     begin
         DotNetStream := InStream;
         DotNetByte := 0;
@@ -353,12 +344,12 @@ codeunit 51002 "TOO Advanced Compression Mgt."
 
     procedure ZstandardDecompressStream(InStream: InStream; OutStream: OutStream)
     var
-        DotNetStream: Dotnet Stream;
-        DotNetByte: DotNet Byte;
-        DotNetArray: DotNet Array;
         Decompressed: DotNet Array;
+        DotNetArray: DotNet Array;
+        DotNetByte: DotNet Byte;
+        OutMemStream: DotNet MemoryStream;
+        DotNetStream: DotNet Stream;
         Decompressor: DotNet TOOZstdDecompressor;
-        OutMemStream: Dotnet MemoryStream;
     begin
         DotNetByte := 0;
         DotNetStream := InStream;
@@ -375,7 +366,7 @@ codeunit 51002 "TOO Advanced Compression Mgt."
 
         // Wrap decompressed array into a stream
         OutMemStream := OutMemStream.MemoryStream(Decompressed);
-        Decompressor.Dispose(); // Dispose compressor 
+        Decompressor.Dispose(); // Dispose compressor
         OutMemStream.CopyTo(OutStream);
     end;
 #endif
@@ -386,6 +377,6 @@ codeunit 51002 "TOO Advanced Compression Mgt."
         ExePath: Text;
         TempFileName: Text;
         ExeProcess: DotNet TOOProcess;
-        ExeProcessStartInfo: Dotnet TOOProcessStartInfo;
+        ExeProcessStartInfo: DotNet TOOProcessStartInfo;
 #endif
 }

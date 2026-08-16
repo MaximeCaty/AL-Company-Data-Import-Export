@@ -1,10 +1,10 @@
 page 51020 "TOO Pipou Threads"
 {
+    ApplicationArea = All;
     Caption = 'Import/Export Active Threads';
+    Editable = false;
     PageType = ListPart;
     SourceTable = "TOO Pipou Thread";
-    Editable = false;
-    ApplicationArea = All;
 
     layout
     {
@@ -12,18 +12,9 @@ page 51020 "TOO Pipou Threads"
         {
             repeater(Group)
             {
-                field("Thread No."; Rec."Thread No.")
-                {
-                    ApplicationArea = All;
-                }
-                field(SystemCreatedAt; Rec.SystemCreatedAt)
-                {
-                    ApplicationArea = All;
-                }
-                field(Status; Rec.Status)
-                {
-                    ApplicationArea = All;
-                }
+                field("Thread No."; Rec."Thread No.") { }
+                field(SystemCreatedAt; Rec.SystemCreatedAt) { }
+                field(Status; Rec.Status) { }
                 field(ThreadProgress; ThreadProgress)
                 {
                     Caption = 'Progression %';
@@ -34,22 +25,10 @@ page 51020 "TOO Pipou Threads"
                     Editable = false;
                     Width = 15;
                 }
-                field("Current Table"; Rec."Current Table")
-                {
-                    ApplicationArea = All;
-                }
-                field("Current File"; Rec."Current File")
-                {
-                    ApplicationArea = All;
-                }
-                field("Current File Progress %"; Rec."Current File Progress %")
-                {
-                    ApplicationArea = All;
-                }
-                field("Total Rec. Proceed"; Rec."Total Rec. Proceed")
-                {
-                    ApplicationArea = All;
-                }
+                field("Current Table"; Rec."Current Table") { }
+                field("Current File"; Rec."Current File") { }
+                field("Current File Progress %"; Rec."Current File Progress %") { }
+                field("Total Rec. Proceed"; Rec."Total Rec. Proceed") { }
             }
         }
     }
@@ -57,22 +36,21 @@ page 51020 "TOO Pipou Threads"
     trigger OnAfterGetRecord()
     begin
         if Rec."Total Rec. To Process" = 0 then begin
-            ThreadProgressBar := ProgressBar(0);
+            ThreadProgressBar := ProgressBar(0, 15);
             ThreadProgress := 0;
         end else begin
-            ThreadProgressBar := ProgressBar(Rec."Total Rec. Proceed" / Rec."Total Rec. To Process");
+            ThreadProgressBar := ProgressBar(Rec."Total Rec. Proceed" / Rec."Total Rec. To Process", 15);
             ThreadProgress := Round(Rec."Total Rec. Proceed" / Rec."Total Rec. To Process" * 100, 1);
         end;
     end;
 
-
-    procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
+    procedure ProgressBar(ProgressPercent: Decimal; Length: Integer) AsciiResult: Text
     var
         i: Integer;
         ProgressChar: Integer;
     begin
-        ProgressChar := Round(ProgressPercent * 12, 1, '<') + 1;
-        for i := 1 to 12 do begin
+        ProgressChar := Round(ProgressPercent * Length, 1, '<') + 1;
+        for i := 1 to Length do
             if i < ProgressChar then
                 AsciiResult += '▰'
             else
@@ -80,10 +58,10 @@ page 51020 "TOO Pipou Threads"
                     AsciiResult += '▴'
                 else
                     AsciiResult += '▱';
-        end;
     end;
 
+
     var
-        ThreadProgressBar: Text[20];
         ThreadProgress: Integer;
+        ThreadProgressBar: Text[20];
 }

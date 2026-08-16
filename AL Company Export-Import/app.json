@@ -2,13 +2,13 @@
   "id": "201ed8e4-6893-4a58-a79c-42e072139566",
   "name": "AL Company Import-Export",
   "publisher": "Maxime Caty",
-  "version": "1.0.0.4",
-  "brief": "Offer company data import-export feature, with table selection, schema matching and optimised archive format.",
-  "description": "",
+  "version": "2.0.0.0",
+  "brief": "Offer company data import-export, with table selection, schema matching and optimised archive format.",
+  "description": "Offer company data import-export, with table selection, schema matching and optimised archive format.",
   "privacyStatement": "",
   "EULA": "",
-  "help": "",
-  "url": "",
+  "help": "https://github.com/MaximeCaty/AL-Company-Data-Import-Export",
+  "url": "https://github.com/MaximeCaty/AL-Company-Data-Import-Export",
   "logo": "",
   "dependencies": [],
   "screenshots": [],
@@ -30,8 +30,8 @@
     "NoImplicitWith",
     "TranslationFile"
   ],
-  "target": "Cloud",
+  "target": "OnPrem",
   "preprocessorSymbols": [
-    ""
+    "ONPREM"
   ]
 }

@@ -1,5 +1,6 @@
 page 51014 "TOO Upload File JS"
 {
+    ApplicationArea = All;
     Caption = 'Upload large file using JS addin';
     PageType = Card;
 
@@ -15,30 +16,35 @@ page 51014 "TOO Upload File JS"
                 {
                     Caption = 'File Name';
                     Editable = false;
+                    ApplicationArea = All;
                 }
 
                 field(FileSize; FileSize)
                 {
                     Caption = 'File Size';
                     Editable = false;
+                    ApplicationArea = All;
                 }
                 field(Progression; Progression)
                 {
                     Caption = 'Upload Progression';
                     Editable = false;
                     Enabled = false;
+                    ApplicationArea = All;
                 }
                 field(UploadSpeed; UploadSpeed)
                 {
                     Caption = 'Upload Speed';
                     Editable = false;
                     Enabled = false;
+                    ApplicationArea = All;
                 }
                 field(EstRemainingDur; EstRemainingDur)
                 {
                     Caption = 'Est. Remaining time';
                     Editable = false;
                     Enabled = false;
+                    ApplicationArea = All;
                 }
 
                 usercontrol(ChunkedUploader; "TOO ChunkedFileUploader")
@@ -47,30 +53,28 @@ page 51014 "TOO Upload File JS"
 
                     trigger StartUpload(UploadedFileName: Text; TotalSize: Integer)
                     begin
-                        clear(TempBlob);
+                        Clear(TempBlob);
                         TempBlob.CreateOutStream(OutStr, TextEncoding::Windows); // single byte text encoding
                         FileName := UploadedFileName;
                         FileSize := Format(TotalSize div (1024 * 1024)) + ' MB';
                         TotalSizeGlobal := TotalSize;
                         ReceivedSizeGlobal := 0;
                         Progression := ProgressBar(0, 12);
-                        //Clear(TempFile);
                         StartDT := CurrentDateTime;
                         LastChunkDT := CurrentDateTime;
                     end;
 
-                    trigger UploadChunk(BinaryTextChunk: Text; ChunkNumber: Integer)
+                    trigger UploadChunk(BinaryTextChunk: BigText; ChunkNumber: Integer)
                     var
                         ChunkSize: Integer;
                     begin
-                        ChunkSize := StrLen(BinaryTextChunk);
-                        OutStr.WriteText(BinaryTextChunk);
-                        //TempFile.AddText(BinaryTextChunk);
+                        BinaryTextChunk.Write(OutStr);
+                        ChunkSize := BinaryTextChunk.Length;
                         ReceivedSizeGlobal += ChunkSize;
 
                         // speed / duration
-                        EstRemainingDur := round((TotalSizeGlobal / ReceivedSizeGlobal * (CurrentDateTime - StartDT)) - (CurrentDateTime - StartDT), 1000);
-                        UploadSpeed := Format(round(ChunkSize / (CurrentDateTime - LastChunkDT) * 1000 / (1024 * 1024), 0.01)) + ' MB/S';
+                        EstRemainingDur := Round((TotalSizeGlobal / ReceivedSizeGlobal * (CurrentDateTime - StartDT)) - (CurrentDateTime - StartDT), 1000);
+                        UploadSpeed := Format(Round(ChunkSize / (CurrentDateTime - LastChunkDT) * 1000 / (1024 * 1024), 0.01)) + ' MB/S';
 
                         // Update progression
                         Progression := ProgressBar(ReceivedSizeGlobal / TotalSizeGlobal, 12);
@@ -102,8 +106,7 @@ page 51014 "TOO Upload File JS"
     begin
         if not UploadCompleted then
             Error('No file were uploaded or completed.');
-        FileName := FileName;
-        //TempFile.Read(InStr);
+        UploadedFileName := FileName;
         TempBlob.CreateInStream(InStr)
     end;
 
@@ -127,17 +130,16 @@ page 51014 "TOO Upload File JS"
     end;
 
     var
-        FileName: Text;
-        FileSize: Text;
+        TempBlob: Codeunit "Temp Blob";
+        UploadCompleted: Boolean;
+        LastChunkDT: DateTime;
+        StartDT: DateTime;
+        EstRemainingDur: Duration;
         ReceivedSizeGlobal: Integer;
         TotalSizeGlobal: Integer;
-        TempBlob: Codeunit "Temp Blob";
         OutStr: OutStream;
-        //TempFile: BigText;
-        UploadCompleted: Boolean;
+        FileName: Text;
+        FileSize: Text;
         Progression: Text;
-        StartDT: DateTime;
-        LastChunkDT: DateTime;
-        EstRemainingDur: Duration;
         UploadSpeed: Text;
 }

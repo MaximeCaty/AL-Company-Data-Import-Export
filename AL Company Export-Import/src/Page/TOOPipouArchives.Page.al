@@ -1,13 +1,13 @@
 page 51007 "TOO Pipou Archives"
 {
-    Caption = 'Company Data Archives';
-    PageType = List;
-    UsageCategory = Lists;
-    SourceTable = "TOO Pipou Archive";
-    ModifyAllowed = false;
-    InsertAllowed = false;
-    CardPageId = "TOO Pipou Archive Card";
     ApplicationArea = All;
+    Caption = 'Company Data Archives List';
+    CardPageId = "TOO Pipou Archive Card";
+    InsertAllowed = false;
+    ModifyAllowed = false;
+    PageType = List;
+    SourceTable = "TOO Pipou Archive";
+    UsageCategory = Lists;
 
     layout
     {
@@ -15,61 +15,36 @@ page 51007 "TOO Pipou Archives"
         {
             repeater(Lst)
             {
-                field("Archive Name"; Rec."Archive Name")
-                {
-                    ApplicationArea = All;
-                }
+                field("Archive Name"; Rec."Archive Name") { }
                 field("Process Status"; Rec."Process Status")
                 {
-                    ApplicationArea = All;
 
                     trigger OnDrillDown()
                     begin
                         if Rec."Process Status" <> Rec."Process Status"::" " then
-                            page.Run(Page::"TOO Pipou Archive Card", Rec);
+                            Page.Run(Page::"TOO Pipou Archive Card", Rec);
                     end;
                 }
-                field("Archive Sequence No."; Rec."Archive Sequence No.")
-                {
-                    ApplicationArea = All;
-                }
-                field("Files Size (KB)"; Rec."Files Size (KB)")
-                {
-                    ApplicationArea = All;
-                }
-                field("Files Compressed Size (KB)"; Rec."Files Compressed Size (KB)")
-                {
-                    ApplicationArea = All;
-                }
-                field("Compression Ratio (%)"; Rec."Compression Ratio (%)")
-                {
-                    ApplicationArea = All;
-                }
+                field("Archive Sequence No."; Rec."Archive Sequence No.") { }
+                field("Files Size (KB)"; Rec."Files Size (KB)") { }
+                field("Files Compressed Size (KB)"; Rec."Files Compressed Size (KB)") { }
+                field("Compression Ratio (%)"; Rec."Compression Ratio (%)") { }
                 field("No. Files"; Rec."No. Files")
                 {
-                    ApplicationArea = All;
 
                     trigger OnDrillDown()
                     var
                         ArchFiles: Record "TOO Pipou Archive Files";
                     begin
-                        if Rec."Archive Name" = '' then exit;
+                        if Rec."Archive Name" = '' then
+                            exit;
                         ArchFiles.SetRange("Archive ID", Rec."Archive ID");
-                        page.run(Page::"TOO Pipou Archive Files", ArchFiles)
+                        Page.Run(Page::"TOO Pipou Archive Files", ArchFiles)
                     end;
                 }
-                field("Import Destination Company"; Rec."Import Destination Company")
-                {
-                    ApplicationArea = All;
-                }
-                field("Imported Files"; Rec."Imported Files")
-                {
-                    ApplicationArea = All;
-                }
-                field("Import Warning / Error"; Rec."Import Warning / Error")
-                {
-                    ApplicationArea = All;
-                }
+                field("Import Destination Company"; Rec."Import Destination Company") { }
+                field("Imported Files"; Rec."Imported Files") { }
+                field("Import Warning / Error"; Rec."Import Warning / Error") { }
             }
         }
     }
@@ -81,31 +56,29 @@ page 51007 "TOO Pipou Archives"
             action(Download)
             {
                 Caption = 'Download archive';
-                ApplicationArea = All;
                 Image = Download;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
                     ConfirmLbl: Label 'This archive file is ~%1 %2.\ Download the file ?';
                 begin
-                    if Confirm(StrSubstNo(ConfirmLbl, round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
+                    if Confirm(StrSubstNo(ConfirmLbl, Round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
                         Rec.DownloadArchiveFile();
                 end;
             }
             action(Apply)
             {
                 Caption = 'Apply Data';
-                ToolTip = 'Apply archive data content to a specific company';
-                ApplicationArea = All;
                 Image = ImportDatabase;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
+                ToolTip = 'Apply archive data content to a specific company';
 
                 trigger OnAction()
                 var
@@ -119,20 +92,19 @@ page 51007 "TOO Pipou Archives"
                     end;
                 end;
             }
-            action("Reset")
+            action(Reset)
             {
                 Caption = 'Reset Import State';
-                ApplicationArea = All;
                 Image = ResetStatus;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
-                    ArchTables: Record "TOO Pipou Archive Tables";
                     ArchFiles: Record "TOO Pipou Archive Files";
+                    ArchTables: Record "TOO Pipou Archive Tables";
                     ArchLogs: Record "TOO Pipou Import Log";
                     StatusErrLbl: Label 'The processing state must be empty to reset import.';
                 begin
@@ -147,23 +119,22 @@ page 51007 "TOO Pipou Archives"
                         ArchLogs.SetRange("Archive ID", Rec."Archive ID");
                         ArchLogs.DeleteAll();
                         ArchTables.SetRange("Archive ID", Rec."Archive ID");
-                        ArchTables.ModifyAll("Preimport Truncated", false);
+                        ArchTables.ModifyAll("PreImport Truncated", false);
                     end;
                 end;
             }
             action(ImportPath)
             {
                 Caption = 'Upload Archive';
-                ToolTip = 'Upload and store an archive file using among import method of your choice.';
-                ApplicationArea = All;
                 Image = Import;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
+                ToolTip = 'Upload and store an archive file using among import method of your choice.';
 
 
-                trigger OnAction();
+                trigger OnAction()
                 begin
                     Rec.UploadArchiveFileDialog();
                 end;

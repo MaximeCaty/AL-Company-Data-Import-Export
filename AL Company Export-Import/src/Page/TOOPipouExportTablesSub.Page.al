@@ -1,11 +1,11 @@
 page 51011 "TOO Pipou Export Tables Sub"
 {
+    ApplicationArea = All;
+    Caption = 'Tables to export';
+    InsertAllowed = false;
     PageType = ListPart;
     SourceTable = "TOO Pipou Archive Tables";
-    InsertAllowed = false;
-    Caption = 'Tables to export';
     SourceTableTemporary = true;
-    ApplicationArea = All;
 
     layout
     {
@@ -13,11 +13,26 @@ page 51011 "TOO Pipou Export Tables Sub"
         {
             repeater(Lst)
             {
-                field("Table ID"; Rec."Table ID") { Editable = false; }
-                field("Table Name"; Rec."Table Name") { Editable = false; }
-                field("Table Caption"; Rec."Table Caption") { Editable = false; }
-                field(DataPerCOompany; Rec.DataPerCompany) { Editable = false; }
-                field("No. Records"; Rec."No. of Records") { Editable = false; }
+                field("Table ID"; Rec."Table ID")
+                {
+                    Editable = false;
+                }
+                field("Table Name"; Rec."Table Name")
+                {
+                    Editable = false;
+                }
+                field("Table Caption"; Rec."Table Caption")
+                {
+                    Editable = false;
+                }
+                field(DataPerCOompany; Rec.DataPerCompany)
+                {
+                    Editable = false;
+                }
+                field("No. Records"; Rec."No. of Records")
+                {
+                    Editable = false;
+                }
                 field(NoOfFields; NoOfFields)
                 {
                     Caption = 'No. of Fields';
@@ -56,6 +71,6 @@ page 51011 "TOO Pipou Export Tables Sub"
     end;
 
     var
-        NoOfFields: Integer;
         TempArchiveTableFields: Record "TOO Pipou Archive Fields" temporary;
+        NoOfFields: Integer;
 }

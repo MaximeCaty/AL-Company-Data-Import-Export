@@ -5,31 +5,31 @@ codeunit 51007 "TOO Pipou Import Events"
     // add your own subscriber here as wanted
 
     EventSubscriberInstance = Manual;
+    SingleInstance = true;
 
     var
-        ImportingRecordID: RecordId;
+        CurrentTableNo: Integer;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnBeforeOnDatabaseInsert, '', false, false)]
-    local procedure OnBeforeOnDatabaseInsert(var IsHandled: Boolean)
+    procedure SetCurrentTableNo(TableNo: Integer)
     begin
-        IsHandled := true;
-    end;
-
-
-    procedure SetRecordID(RecID: RecordId)
-    begin
-        ImportingRecordID := RecID;
+        CurrentTableNo := TableNo;
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Change Log Management", OnBeforeLogInsertion, '', false, false)]
     local procedure OnBeforeLogInsertion(var RecRef: RecordRef)
     begin
-        if RecRef.RecordId = ImportingRecordID then begin
-            // Ignore change log on record beeing imported
-            // change event recref as temporary (this doesnt change the real record beeing inserted tho)
+        if RecRef.RecordId.TableNo = CurrentTableNo then begin
+            // Change it to empty temp record to stop change log
             RecRef.Close();
-            RecRef.Open(ImportingRecordID.TableNo, true);
+            RecRef.Open(CurrentTableNo, true);
         end;
+    end;
+
+    #region Ignore CRM Ev & API Web hook notif
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnBeforeOnDatabaseInsert, '', false, false)]
+    local procedure OnBeforeOnDatabaseInsert(var IsHandled: Boolean)
+    begin
+        IsHandled := true;
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"Contact Business Relation", OnInsertOnBeforeFindByContact, '', false, false)]
@@ -44,13 +44,14 @@ codeunit 51007 "TOO Pipou Import Events"
         IsHandled := true;
     end;
 
-    [EventSubscriber(ObjectType::Table, Database::customer, OnBeforeCreateNewCustomer, '', false, false)]
+    [EventSubscriber(ObjectType::Table, Database::Customer, OnBeforeCreateNewCustomer, '', false, false)]
     local procedure CustomerOnBeforeCreateLink(var IsHandled: Boolean)
     begin
         IsHandled := true;
     end;
+    #endregion
 
-    [EventSubscriber(ObjectType::Table, Database::vendor, OnBeforeCreateNewVendor, '', false, false)]
+    [EventSubscriber(ObjectType::Table, Database::Vendor, OnBeforeCreateNewVendor, '', false, false)]
     local procedure VendorOnBeforeCreateLink(var IsHandled: Boolean)
     begin
         IsHandled := true;

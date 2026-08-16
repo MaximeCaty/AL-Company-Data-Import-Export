@@ -1,9 +1,9 @@
-codeunit 51000 "TOO WriteInsideTryEnabled"
+codeunit 51010 "TOO WriteInsideTryEnabled"
 {
     trigger OnRun()
     var
-        EnvironmentInformation: Codeunit "Environment Information";
         Buffer: Record "Name/Value Buffer";
+        EnvironmentInformation: Codeunit "Environment Information";
     begin
         if EnvironmentInformation.IsSaaS() then
             exit; // Write inside tryfunction is alway enabled on SaaS

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Data;
@@ -103,6 +103,63 @@ namespace BCBulkInsertHelper
                 default:
                     return typeof(object);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Marks a column as always empty for the current chunk : NewRow() then pre-fills it with the BC empty
+        /// value of its type, so the caller never has to push a value for it row by row.
+        /// Must be called after AddColumn and before the first BeginRow() that actually feeds a row :
+        /// DefaultValue is applied when the DataRow is created, not retroactively.
+        /// typeName uses the same names as AddColumn.
+        /// </summary>
+        public void SetColumnEmptyDefault(int columnIndex, string typeName)
+        {
+            if (columnIndex < 0 || columnIndex >= _dataTable.Columns.Count)
+                return;
+
+            _dataTable.Columns[columnIndex].DefaultValue = GetEmptyValueFromName(typeName.ToLowerInvariant());
+        }
+
+        private object GetEmptyValueFromName(string typeName)
+        {
+            switch (typeName)
+            {
+                case "string":
+                case "text":
+                case "code":
+                    return "";
+                case "int32":
+                case "integer":
+                case "int":
+                    return 0;
+                case "duration":
+                case "timespan":
+                case "int64":
+                case "biginteger":
+                    return 0L;
+                case "decimal":
+                    return 0m;
+                case "datetime":
+                case "date":
+                case "time":
+                    // BC stores an empty date/time/datetime as 1753-01-01, not DateTime.MinValue
+                    return ALBlankDateTime;
+                case "boolean":
+                case "bool":
+                    return false;
+                case "guid":
+                    return Guid.Empty;
+                case "blob":
+                case "binary":
+                case "media":
+                case "image":
+                    return new byte[0];
+                case "varbinary":
+                    // Empty BC RecordID : table no as int32 zero + 00 00 terminator = 6 zero bytes
+                    return new byte[6];
+                default:
+                    return DBNull.Value;
             }
         }
 
@@ -312,6 +369,124 @@ namespace BCBulkInsertHelper
                 
             }
             _dataTable.Clear();
+        }
+
+        /// <summary>
+        /// Disables the secondary (nonclustered) indexes of a table, plus the clustered index of the SIFT indexed
+        /// views built on it, so a bulk load does not maintain and log them row by row.
+        /// Returns the number of indexes left disabled (table indexes + SIFT views).
+        /// Never touches the clustered index (disabling it would make the data unreachable), nor primary keys,
+        /// unique constraints or unique indexes (disabling those would silently stop enforcing uniqueness).
+        /// Call RebuildDisabledIndexes when the load is finished : until then the table has no secondary indexes,
+        /// so anything querying it will be slow.
+        /// </summary>
+        public int DisableSecondaryIndexes(string connectionString, string tableName)
+        {
+            const string sql = @"
+-- Resolve the object once and fail loudly : QUOTENAME returns NULL above 128 characters, which used to
+-- turn this whole batch into a silent no-op (empty command, count 0, no exception).
+DECLARE @oid int = OBJECT_ID(QUOTENAME(@table));
+IF @oid IS NULL
+    THROW 50001, 'DisableSecondaryIndexes : table not found (name too long for QUOTENAME, or not in the current database).', 1;
+
+DECLARE @cmd nvarchar(max) = N'';
+SELECT @cmd = @cmd + N'ALTER INDEX ' + QUOTENAME(i.name) + N' ON '
+            + QUOTENAME(OBJECT_SCHEMA_NAME(i.object_id)) + N'.' + QUOTENAME(OBJECT_NAME(i.object_id)) + N' DISABLE;'
+FROM sys.indexes i
+WHERE i.object_id = @oid
+  AND i.type = 2                 -- nonclustered only
+  AND i.is_disabled = 0
+  AND i.is_primary_key = 0
+  AND i.is_unique_constraint = 0
+  AND i.is_unique = 0;
+
+-- SIFT indexed views ($VSIFT$) are separate objects maintained synchronously on every insert, and on the
+-- ledger tables they cost more than the insert itself. Disabling the clustered index of a VIEW only
+-- de-materializes it (unlike on a table, no data is orphaned) : the rebuild below re-materializes it.
+SELECT @cmd = @cmd + N'ALTER INDEX ' + QUOTENAME(i.name) + N' ON '
+            + QUOTENAME(SCHEMA_NAME(v.schema_id)) + N'.' + QUOTENAME(v.name) + N' DISABLE;'
+FROM sys.views v
+JOIN sys.indexes i ON i.object_id = v.object_id AND i.type = 1 AND i.is_disabled = 0
+WHERE EXISTS (SELECT 1 FROM sys.sql_expression_dependencies d
+              WHERE d.referencing_id = v.object_id AND d.referenced_id = @oid);
+
+IF @cmd <> N'' EXEC sp_executesql @cmd;
+
+SELECT (SELECT COUNT(*) FROM sys.indexes
+        WHERE object_id = @oid AND type = 2 AND is_disabled = 1)
+     + (SELECT COUNT(*) FROM sys.views v
+        JOIN sys.indexes i ON i.object_id = v.object_id AND i.type = 1 AND i.is_disabled = 1
+        WHERE EXISTS (SELECT 1 FROM sys.sql_expression_dependencies d
+                      WHERE d.referencing_id = v.object_id AND d.referenced_id = @oid));";
+
+            return ExecuteIndexCommand(connectionString, tableName, sql);
+        }
+
+        /// <summary>
+        /// Rebuilds every disabled nonclustered index of a table and every disabled SIFT view built on it,
+        /// which is what re-enables them.
+        /// Idempotent : safe to call when nothing is disabled, and safe to call again after a failed run,
+        /// because it works from the current is_disabled state rather than a remembered list.
+        /// Returns the number of indexes still disabled afterwards (0 when everything was rebuilt).
+        /// </summary>
+        public int RebuildDisabledIndexes(string connectionString, string tableName)
+        {
+            const string sql = @"
+DECLARE @oid int = OBJECT_ID(QUOTENAME(@table));
+IF @oid IS NULL
+    THROW 50002, 'RebuildDisabledIndexes : table not found (name too long for QUOTENAME, or not in the current database).', 1;
+
+DECLARE @cmd nvarchar(max) = N'';
+SELECT @cmd = @cmd + N'ALTER INDEX ' + QUOTENAME(i.name) + N' ON '
+            + QUOTENAME(OBJECT_SCHEMA_NAME(i.object_id)) + N'.' + QUOTENAME(OBJECT_NAME(i.object_id)) + N' REBUILD;'
+FROM sys.indexes i
+WHERE i.object_id = @oid
+  AND i.type = 2
+  AND i.is_disabled = 1;
+
+-- Re-materialize the SIFT views first would be pointless before the data is there, but they must be
+-- rebuilt here : while disabled, any BC query using WITH (NOEXPAND) on them fails.
+SELECT @cmd = @cmd + N'ALTER INDEX ' + QUOTENAME(i.name) + N' ON '
+            + QUOTENAME(SCHEMA_NAME(v.schema_id)) + N'.' + QUOTENAME(v.name) + N' REBUILD;'
+FROM sys.views v
+JOIN sys.indexes i ON i.object_id = v.object_id AND i.type = 1 AND i.is_disabled = 1
+WHERE EXISTS (SELECT 1 FROM sys.sql_expression_dependencies d
+              WHERE d.referencing_id = v.object_id AND d.referenced_id = @oid);
+
+IF @cmd <> N'' EXEC sp_executesql @cmd;
+
+SELECT (SELECT COUNT(*) FROM sys.indexes
+        WHERE object_id = @oid AND type = 2 AND is_disabled = 1)
+     + (SELECT COUNT(*) FROM sys.views v
+        JOIN sys.indexes i ON i.object_id = v.object_id AND i.type = 1 AND i.is_disabled = 1
+        WHERE EXISTS (SELECT 1 FROM sys.sql_expression_dependencies d
+                      WHERE d.referencing_id = v.object_id AND d.referenced_id = @oid));";
+
+            return ExecuteIndexCommand(connectionString, tableName, sql);
+        }
+
+        private static int ExecuteIndexCommand(string connectionString, string tableName, string sql)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("ConnectionString must be set", nameof(connectionString));
+            if (string.IsNullOrWhiteSpace(tableName))
+                throw new ArgumentException("Table name must be set", nameof(tableName));
+
+            // Unknown table (the $ext table does not always exist) : nothing to do
+            if (!TableExists(connectionString, tableName))
+                return 0;
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.CommandTimeout = 0; // a rebuild on a large table can run for a long time
+                    command.Parameters.AddWithValue("@table", tableName.Trim());
+                    object result = command.ExecuteScalar();
+                    return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
+                }
+            }
         }
 
         private DataTable CreateSubset(DataTable source, List<string> columnNames)

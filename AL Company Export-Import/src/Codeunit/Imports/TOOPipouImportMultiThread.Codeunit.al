@@ -18,32 +18,32 @@ codeunit 51014 "TOO Pipou Import Multithreads"
 
 
     var
-        ThreadHelper: Codeunit "TOO Pipou Threads Mgt.";
         ImportData: Codeunit "TOO Pipou Import Data";
         PipouMgt: Codeunit "TOO Pipou Mgt.";
+        ThreadHelper: Codeunit "TOO Pipou Threads Mgt.";
         Runforeground: Boolean;
 
     #region MultiThrd Imp
     procedure MultiThreadImport(var Archive: Record "TOO Pipou Archive"; Foreground: Boolean)
     var
+        OtherArchive: Record "TOO Pipou Archive";
+        Thread: Record "TOO Pipou Thread";
+        AllThreadCompleted: Boolean;
+        ErrorThrown: Boolean;
+        StartDT: DateTime;
+        GlobalProgress: Decimal;
+        RemProgress: Decimal;
+        TotFileSize: Decimal;
         Win: Dialog;
-        Progress: Label 'Importing Data to company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\Records : #6######\-\#7######\-\#8######\-\#9######\-\#10######\-\#11######\-\#12######';
+        ElapsedTime: Duration;
+        RemDuration: Duration;
+        ArchTotalRecToImport: Integer;
         DataProceed: Integer;
         RecProceed: Integer;
-        TotFileSize: Decimal;
-        ElapsedTime: Duration;
-        ThreadTxt: Text;
-        ArchTotalRecToImport: Integer;
-        Thread: Record "TOO Pipou Thread";
         SessionID: Integer;
-        AllThreadCompleted: Boolean;
-        RemDuration: Duration;
-        RemProgress: Decimal;
-        GlobalProgress: Decimal;
-        OtherArchive: Record "TOO Pipou Archive";
-        ErrorThrown: Boolean;
-        ErrorMessage: Text;
-        StartDT: DateTime;
+        Progress: Label 'Importing Data to company #1####\-\Elapsed time : #2########\ Estimated duration : #3#######\-\Global progression :\#4#########\Records : #6######\-\#7######\-\#8######\-\#9######\-\#10######\-\#11######\-\#12######';
+        ErrorCallStack, ErrorMessage : Text;
+        ThreadTxt: Text;
     begin
         ThreadHelper.CheckThreadsRunning();
 
@@ -109,7 +109,8 @@ codeunit 51014 "TOO Pipou Import Multithreads"
             end;
             Win.Close();
 
-            if not Foreground then exit;
+            if not Foreground then
+                exit;
 
             StartDT := CurrentDateTime;
 
@@ -118,7 +119,7 @@ codeunit 51014 "TOO Pipou Import Multithreads"
             Win.Update(1, Archive."Exported From Company");
             DataProceed := 0;
             while (not AllThreadCompleted) do begin
-                sleep(900);
+                Sleep(900);
 
                 AllThreadCompleted := true; // false if any thread not completed
                 DataProceed := 0;
@@ -126,38 +127,44 @@ codeunit 51014 "TOO Pipou Import Multithreads"
                 TotFileSize := 0;
 
                 // Thread 1 :
-                ThreadTxt := ThreadHelper.UpdateThreadUIProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                ThreadTxt := ThreadHelper.UpdateThreadUIProgress(1, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                 Win.Update(7, ThreadTxt);
-                if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                if ErrorThrown then
+                    ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 // Thread 2 :
                 if Archive."Number of Threads" > 1 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(2, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                     Win.Update(8, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 end;
                 // Thread 3 :
                 if Archive."Number of Threads" > 2 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(3, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                     Win.Update(9, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 end;
                 // Thread 4 :
                 if Archive."Number of Threads" > 3 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(4, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                     Win.Update(10, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 end;
                 // Thread 5 :
                 if Archive."Number of Threads" > 4 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(5, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                     Win.Update(11, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 end;
                 // Thread 6 :
                 if Archive."Number of Threads" > 5 then begin
-                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, RecProceed, TotFileSize, Archive);
+                    ThreadTxt := ThreadHelper.UpdateThreadUIProgress(6, AllThreadCompleted, ErrorThrown, ErrorMessage, ErrorCallStack, RecProceed, TotFileSize, Archive);
                     Win.Update(12, ThreadTxt);
-                    if ErrorThrown then ThrowError(Archive, ErrorMessage);
+                    if ErrorThrown then
+                        ThrowError(Archive, ErrorMessage, ErrorCallStack);
                 end;
 
                 // Global progression
@@ -181,10 +188,11 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         // Finished
     end;
 
-    local procedure ThrowError(var Archive: Record "TOO Pipou Archive"; Msg: Text)
+    local procedure ThrowError(var Archive: Record "TOO Pipou Archive"; Msg: Text; CallStack: Text)
     var
-        Thread: Record "TOO Pipou Thread";
         ActiveSession: Record "Active Session";
+        Thread: Record "TOO Pipou Thread";
+        ThreadErrLbl: Label '%1\-\CallStack:\%2', Comment = '%1 = error message, %2 = call stack';
     begin
         // Kill all other threads
         Thread.SetRange("Archive ID", Archive."Archive ID");
@@ -201,12 +209,11 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         Archive."Process Status" := Archive."Process Status"::" ";
         Archive.Modify();
         Commit();
-        Error(Msg);
+        Error(ThreadErrLbl, Msg, CallStack);
     end;
 
     local procedure CalcArchiveTotalRecToImport(var Archive: Record "TOO Pipou Archive") TotalRec: Integer
     var
-        ArchiveFiles: Record "TOO Pipou Archive Files";
         ArchiveTable: Record "TOO Pipou Archive Tables";
     begin
         ArchiveTable.SetRange("Archive ID", Archive."Archive ID");
@@ -215,7 +222,7 @@ codeunit 51014 "TOO Pipou Import Multithreads"
         ArchiveTable.SetFilter("Match Status", '<>%1', ArchiveTable."Match Status"::Missing);
         ArchiveTable.SetAutoCalcFields("Rem. Rec. To Import");
         // Exclude itself - security
-        ArchiveTable.SetFilter("Table ID", '<>%1&<>%2&<>%3&<>%4&<>%5&<>%6', Database::"TOO Pipou Archive", Database::"TOO Pipou Archive Fields", Database::"TOO Pipou Archive Tables", Database::"TOO Pipou Archive Files", database::"TOO Pipou Thread", Database::"TOO Temp Blob");
+        ArchiveTable.SetFilter("Table ID", '<>%1&<>%2&<>%3&<>%4&<>%5&<>%6', Database::"TOO Pipou Archive", Database::"TOO Pipou Archive Fields", Database::"TOO Pipou Archive Tables", Database::"TOO Pipou Archive Files", Database::"TOO Pipou Thread", Database::"TOO Temp Blob");
         if ArchiveTable.FindSet() then
             repeat
                 TotalRec += ArchiveTable."Rem. Rec. To Import";

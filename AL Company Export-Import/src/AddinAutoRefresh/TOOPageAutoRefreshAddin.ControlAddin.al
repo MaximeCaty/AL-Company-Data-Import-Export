@@ -10,7 +10,6 @@ controladdin TOOPageAutoRefreshAddin
     Scripts = 'src/AddinAutoRefresh/PageAutoRefreshAddin-Addin.js';
     StartupScript = 'src/AddinAutoRefresh/PageAutoRefreshAddin-Startup.js';
 
-
     // The procedure declarations specify what JavaScript methods could be called from AL.
     procedure GetExtensionParam()
 

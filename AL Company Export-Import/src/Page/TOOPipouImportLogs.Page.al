@@ -1,10 +1,10 @@
 page 51006 "TOO Pipou Import Logs"
 {
+    ApplicationArea = All;
+    InsertAllowed = false;
+    ModifyAllowed = false;
     PageType = List;
     SourceTable = "TOO Pipou Import Log";
-    ModifyAllowed = False;
-    InsertAllowed = false;
-    ApplicationArea = All;
 
     layout
     {
@@ -12,42 +12,15 @@ page 51006 "TOO Pipou Import Logs"
         {
             repeater(lst)
             {
-                field("Thread No."; Rec."Thread No.")
-                {
-                    ApplicationArea = All;
-                }
-                field("Entry No."; Rec."Entry No.")
-                {
-                    ApplicationArea = All;
-                }
-                field("Table ID"; Rec."Table ID")
-                {
-                    ApplicationArea = All;
-                }
-                field("Table Name"; Rec."Table Name")
-                {
-                    ApplicationArea = All;
-                }
-                field("Chunk Entry No."; Rec."Chunk Entry No.")
-                {
-                    ApplicationArea = All;
-                }
-                field(Status; Rec.Status)
-                {
-                    ApplicationArea = All;
-                }
-                field("Action"; Rec.Action)
-                {
-                    ApplicationArea = All;
-                }
-                field("Message"; Rec.Message)
-                {
-                    ApplicationArea = All;
-                }
-                field(CallStack; Rec.CallStack)
-                {
-                    ApplicationArea = all;
-                }
+                field("Thread No."; Rec."Thread No.") { }
+                field("Entry No."; Rec."Entry No.") { }
+                field("Table ID"; Rec."Table ID") { }
+                field("Table Name"; Rec."Table Name") { }
+                field("Chunk Entry No."; Rec."Chunk Entry No.") { }
+                field(Status; Rec.Status) { }
+                field("Action"; Rec.Action) { }
+                field(Message; Rec.Message) { }
+                field(CallStack; Rec.CallStack) { }
             }
         }
     }

@@ -1,38 +1,25 @@
 table 51006 "TOO Pipou Archive"
 {
-    DataClassification = CustomerContent;
-    LookupPageId = "TOO Pipou Archive Card";
-    DrillDownPageId = "TOO Pipou Archive Card";
-    DataPerCompany = false;
     DataCaptionFields = "Archive Name";
+    DataClassification = CustomerContent;
+    DataPerCompany = false;
+    DrillDownPageId = "TOO Pipou Archive Card";
+    LookupPageId = "TOO Pipou Archive Card";
 
 
     fields
     {
-        field(1; "Entry No."; Integer)
-        {
-        }
-        field(10; "Archive Name"; Text[150])
-        {
-        }
-        field(15; "Archive ID"; Guid)
-        {
-
-        }
-        field(20; "Archive Sequence No."; Integer)
-        {
-        }
-        field(25; "Exported Date Time"; DateTime)
-        {
-
-        }
-        field(26; "Exported From Company"; Text[30])
-        {
-
-        }
+        field(1; "Entry No."; Integer) { }
+        field(10; "Archive Name"; Text[150]) { }
+        field(15; "Archive ID"; Guid) { }
+        field(16; "Version"; Integer) { }
+        field(20; "Archive Sequence No."; Integer) { }
+        field(25; "Exported Date Time"; DateTime) { }
+        field(26; "Exported From Company"; Text[30]) { }
         field(35; "Import Destination Company"; Text[30])
         {
             TableRelation = Company.Name;
+            ValidateTableRelation = false; // a new company name can be entered, it is created by the import assistant
 
             trigger OnValidate()
             var
@@ -45,65 +32,65 @@ table 51006 "TOO Pipou Archive"
                     Error('You can not change the destination company when data were already marked as imported.');
             end;
         }
-        field(200; "Files Compressed Size (KB)"; Decimal)
-        {
-
-        }
-        field(210; "Files Size (KB)"; Decimal)
-        {
-
-        }
-        field(220; "Compression Ratio (%)"; Decimal)
-        {
-
-        }
-        field(230; "Total Records"; Integer)
-        {
-
-        }
-        field(240; "Total Tables"; Integer)
-        {
-
-        }
-        field(320; "Enable Columns Transcoding"; Boolean)
-        {
-
-        }
-        field(400; "Metadata Json Content"; Blob)
-        {
-
-        }
+        field(200; "Files Compressed Size (KB)"; Decimal) { }
+        field(210; "Files Size (KB)"; Decimal) { }
+        field(220; "Compression Ratio (%)"; Decimal) { }
+        field(230; "Total Records"; Integer) { }
+        field(240; "Total Tables"; Integer) { }
+        field(320; "Enable Columns Transcoding"; Boolean) { }
+        field(330; "Enable Dictionaries"; Boolean) { }
+        field(400; "Metadata Json Content"; Blob) { Compressed = false; }
         field(450; "No. Tables"; Integer)
         {
+            CalcFormula = count("TOO Pipou Archive Tables" where("Archive ID" = field("Archive ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = count("TOO Pipou Archive Tables" where("Archive ID" = field("Archive ID")));
         }
-        field(500; "No. Files"; Integer)
-        {
-
-        }
+        field(500; "No. Files"; Integer) { }
         field(510; "Imported Files"; Integer)
         {
+            CalcFormula = count("TOO Pipou Archive Files" where("Archive Name" = field("Archive Name"), "Archive ID" = field("Archive ID"), Imported = const(true)));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = count("TOO Pipou Archive Files" where("Archive Name" = field("Archive Name"), "Archive ID" = field("Archive ID"), Imported = const(true)));
         }
         field(600; "Import Warning / Error"; Integer)
         {
+            CalcFormula = count("TOO Pipou Import Log" where("Archive Name" = field("Archive Name"), "Archive ID" = field("Archive ID")));
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = count("TOO Pipou Import Log" where("Archive Name" = field("Archive Name"), "Archive ID" = field("Archive ID")));
         }
+
+        field(1000; "Process Status"; Option)
+        {
+            OptionMembers = " ","⌛ Exporting","⌛ Importing","✅ Partially Imported","✅ Imported","✅ Exported";
+        }
+        field(1001; "Process Started At"; DateTime) { }
+        field(1002; "Size To Process (KB)"; Integer) { }
+        field(1003; "Export Duration"; Duration)
+        {
+            Caption = 'Export Duration', Comment = 'Durée de l''export';
+            Editable = false;
+        }
+        field(1004; "Import Duration"; Duration)
+        {
+            Caption = 'Import Duration', Comment = 'Durée de l''import';
+            Editable = false;
+        }
+        field(1010; "Data Size Proceed"; Decimal) { }
+        field(1090; "Number of Threads"; Integer) { InitValue = 2; }
         #region Export Options
         field(700; ClassifiedDataHandling; Option)
         {
-            OptionMembers = "Keep","Empty";
+            OptionMembers = Keep,Empty;
         }
         field(710; "Blob Max Size"; Integer) { }
         field(720; "Chunk Max Size"; Integer) { }
-        field(730; "Prefered Compression Mode"; enum "TOO Compression Algo.") { }
-        field(740; "Diff. Export Start DT"; DateTime) { }
+        field(730; "Prefered Compression Mode"; Enum "TOO Compression Algo.") { }
+        field(735; "Compression Level"; Enum "TOO Compression Level")
+        {
+            Caption = 'Compression Level', Comment = 'Niveau de compression';
+            InitValue = High;
+        }
         #endregion
 
         #region Import Option
@@ -112,16 +99,13 @@ table 51006 "TOO Pipou Archive"
             Caption = 'Truncate Table';
         }
         field(830; "Import Use SQL Bulk"; Boolean) { }
-        #endregion
-
-        field(1000; "Process Status"; Option)
+        field(840; "Idx Disable Min. Records"; Integer)
         {
-            OptionMembers = " ","⌛ Exporting","⌛ Importing","✅ Partially Imported","✅ Imported","✅ Exported";
+            Caption = 'Disable Indexes From (Records)', Comment = 'Désactiver les index à partir de (enregistrements)';
+            InitValue = 10000;
+            MinValue = -1;
         }
-        field(1001; "Process Started At"; DateTime) { }
-        field(1002; "Size To Process (KB)"; Integer) { }
-        field(1010; "Data Size Proceed"; Decimal) { }
-        field(1090; "Number of Threads"; Integer) { }
+        #endregion
     }
 
     keys
@@ -134,11 +118,12 @@ table 51006 "TOO Pipou Archive"
 
     trigger OnDelete()
     var
-        ArchTable: Record "TOO Pipou Archive Tables";
+        ArchDict: Record "TOO Pipou Archive Dict.";
         ArchFields: Record "TOO Pipou Archive Fields";
         ArchFile: Record "TOO Pipou Archive Files";
+        ArchTable: Record "TOO Pipou Archive Tables";
         ArchLogs: Record "TOO Pipou Import Log";
-        ConfirmLbl: label 'Archive %1 have been partially imported, removing it will erase the logs and pending data that were not imported yet. Continue ?';
+        ConfirmLbl: Label 'Archive %1 have been partially imported, removing it will erase the logs and pending data that were not imported yet. Continue ?';
     begin
         if GuiAllowed then
             if Rec."Process Status" = Rec."Process Status"::"✅ Partially Imported" then
@@ -154,6 +139,8 @@ table 51006 "TOO Pipou Archive"
             ArchTable.DeleteAll();
             ArchFields.SetRange("Archive ID", Rec."Archive ID");
             ArchFields.DeleteAll();
+            ArchDict.SetRange("Archive ID", Rec."Archive ID");
+            ArchDict.DeleteAll();
         end;
     end;
 
@@ -162,17 +149,23 @@ table 51006 "TOO Pipou Archive"
     var
         ImportedfileName: Text;
         UploadJS: Page "TOO Upload File JS";
-        File: File;
 #if ONPREM
         SelectFilePage: Page "TOO Select File Path";
-#endif
+        File: File;
         FileNameHelper: Codeunit "File Management";
-        TempBlob: codeunit "Temp Blob";
+        UploadOption3Lbl: Label 'Large file upload from server system path file (Fast. Up to 2 GB)';
+#endif
+        TempBlob: Codeunit "Temp Blob";
         DataArchiveInStr: InStream;
         ChooseUploadLbl: Label 'Select an uploading option according the archive file size';
-        UploadOptionLbl: Label 'Quick upload from client (Fast. Up to 350 MB), Large file upload from client (Slow. Up to 2 GB), Large file upload from server system path file (Fast. Up to 2 GB)';
+        UploadOption1Lbl: Label 'Quick upload from client (Fast. Up to 350 MB)';
+        UploadOption2Lbl: Label 'Large file upload from client (Slow. Up to 2 GB)';
     begin
-        case StrMenu(UploadOptionLbl, 0, ChooseUploadLbl) of
+#if ONPREM
+        case StrMenu(UploadOption1Lbl + ',' + UploadOption2Lbl + ',' + UploadOption3Lbl, 0, ChooseUploadLbl) of
+#else
+        case StrMenu(UploadOption1Lbl + ',' + UploadOption2Lbl, 0, ChooseUploadLbl) of
+#endif
             1:// Normal upload
                 begin
                     // Upload file (Max 350 MB)
@@ -191,10 +184,10 @@ table 51006 "TOO Pipou Archive"
                     UploadJS.GetInStream(ImportedfileName, DataArchiveInStr);
                     exit(Rec.ImportArchiveFile(ImportedfileName, DataArchiveInStr));
                 end;
-
+#if ONPREM
             3: // file system upload
                 begin
-#if ONPREM
+
                     // Select file path
                     SelectFilePage.LookupMode(true);
                     if not (SelectFilePage.RunModal() in [Action::LookupOK, Action::OK, Action::Yes]) then
@@ -207,31 +200,31 @@ table 51006 "TOO Pipou Archive"
 
                     // Import
                     exit(Rec.ImportArchiveFile(ImportedfileName, DataArchiveInStr));
-                    File.Close();
-#endif
                 end;
+#endif
         end;
     end;
 
     procedure ImportArchiveFile(ArchiveName: Text; var DataArchiveInStr: InStream): Boolean
     var
-        IsMetaGZ: Boolean;
-        IsTar: Boolean;
-        TarArchiveMgt: Codeunit "TOO TAR Mgt.";
+        ArchDict: Record "TOO Pipou Archive Dict.";
+        ChunkData: Record "TOO Pipou Archive Files";
         ZipMgt: Codeunit "Data Compression";
-        EntryList: List of [Text];
-        ProgressLbl: Label 'Extracting data files from archive... \ #1######## \ #2##########';
-        ReadingMetaLbl: Label 'Reading archive meta data...';
-        OutStr: OutStream;
-        InStr: InStream;
-        FileNo: Integer;
-        ChunkData: record "TOO Pipou Archive Files";
-        Window: Dialog;
         TempBlob: Codeunit "Temp Blob";
         ArchiveMgt: Codeunit "TOO Pipou Archive Meta Mgt.";
+        TarArchiveMgt: Codeunit "TOO TAR Mgt.";
+        IsMetaGZ: Boolean;
+        IsTar: Boolean;
+        Window: Dialog;
+        InStr: InStream;
+        FileNo: Integer;
+        ProgressLbl: Label 'Extracting data files from archive... \ #1######## \ #2##########';
+        ReadingMetaLbl: Label 'Reading archive meta data...';
+        EntryList: List of [Text];
+        OutStr: OutStream;
     begin
         // Check base archive format (either ZIP or TAR)
-        if not ZipMgt.IsZip(DataArchiveInStr) and not TarArchiveMgt.IsTar(DataArchiveInStr) then
+        if not ZipMgt.IsZip(DataArchiveInStr) and not TarArchiveMgt.IsTAR(DataArchiveInStr) then
             Error('The file format is not recognized. Archive file must be packed in TAR or ZIP format.');
 
         // Open Archive
@@ -258,15 +251,14 @@ table 51006 "TOO Pipou Archive"
                 TarArchiveMgt.ExtractEntry('datameta.json.gz', OutStr)
             else
                 TarArchiveMgt.ExtractEntry('datameta.json', OutStr)
-        end else begin
+        end else
             if IsMetaGZ then
                 ZipMgt.ExtractEntry('datameta.json.gz', OutStr)
             else
                 ZipMgt.ExtractEntry('datameta.json', OutStr);
-        end;
 
         // Default import options
-        Rec."Number of Threads" := 4;
+        Rec."Number of Threads" := 2;
         Rec.DeleteData := true;
 #if ONPREM
         Rec."Import Use SQL Bulk" := true; // fastest OnPrem import
@@ -287,6 +279,19 @@ table 51006 "TOO Pipou Archive"
         Rec.TestField("Archive ID"); // Must be imported from the json metadata
         if not Rec.Insert(true) then
             Rec.Modify(true);
+
+        // Extract the FK dictionaries, before the table members : the archive is fully decompressed here, so the
+        // table import phase can read any of them from any thread without ordering constraint.
+        ArchDict.SetRange("Archive ID", Rec."Archive ID");
+        if ArchDict.FindSet() then
+            repeat
+                ArchDict.Data.CreateOutStream(OutStr);
+                if IsTar then
+                    TarArchiveMgt.ExtractEntry(ArchDict.ArchiveEntryName(), OutStr)
+                else
+                    ZipMgt.ExtractEntry(ArchDict.ArchiveEntryName(), OutStr);
+                ArchDict.Modify();
+            until ArchDict.Next() = 0;
 
         // Import table data files
         if GuiAllowed then
@@ -310,14 +315,14 @@ table 51006 "TOO Pipou Archive"
 
             if GuiAllowed then begin
                 Window.Update(1, ProgressBar(FileNo / Rec."No. Files"));
-                Window.Update(2, Format(FileNo) + ' / ' + format(Rec."No. Files"));
+                Window.Update(2, Format(FileNo) + ' / ' + Format(Rec."No. Files"));
             end;
             FileNo += 1;
         until ChunkData.Next() = 0;
-        clear(TarArchiveMgt);
+        Clear(TarArchiveMgt);
 
         if GuiAllowed then
-            Window.CLose();
+            Window.Close();
         exit(true);
     end;
 
@@ -343,9 +348,9 @@ table 51006 "TOO Pipou Archive"
 
     procedure DownloadArchiveFile()
     var
+        TempBlob: Codeunit "Temp Blob";
         ArchMgt: Codeunit "TOO Pipou Archive Meta Mgt.";
         TarInStream: InStream;
-        TempBlob: Codeunit "Temp Blob";
         FileName: Text;
     begin
         // Create metadata and TAR archive

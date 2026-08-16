@@ -1,11 +1,11 @@
 page 51021 "TOO Pipou Archive Card"
 {
+    ApplicationArea = All;
+    Caption = 'Company Data Archive Card';
+    InsertAllowed = false;
+    ModifyAllowed = false;
     PageType = Card;
     SourceTable = "TOO Pipou Archive";
-    ModifyAllowed = false;
-    InsertAllowed = false;
-    Caption = 'Company Data Archive';
-    ApplicationArea = All;
 
     layout
     {
@@ -16,70 +16,45 @@ page 51021 "TOO Pipou Archive Card"
                 Caption = 'General';
                 field("Archive Name";
                 Rec."Archive Name")
-                {
-                    ApplicationArea = all;
-                }
-                field("Archive ID"; Rec."Archive ID")
-                {
-                    ApplicationArea = all;
-                }
+                { }
+                field("Archive ID"; Rec."Archive ID") { }
 
-                group(Content)
+                group(DataContent)
                 {
                     Caption = 'Data Content';
 
-                    field("Total Records"; Rec."Total Records")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Files Compressed Size (KB)"; Rec."Files Compressed Size (KB)")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Compression Ratio (%)"; Rec."Compression Ratio (%)")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("No. Files"; Rec."No. Files")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("No. Tables"; Rec."No. Tables")
-                    {
-                        ApplicationArea = all;
-                    }
+                    field("Total Records"; Rec."Total Records") { }
+                    field("Files Size (KB)"; Rec."Files Size (KB)") { }
+                    field("Files Compressed Size (KB)"; Rec."Files Compressed Size (KB)") { }
+                    field("Compression Ratio (%)"; Rec."Compression Ratio (%)") { }
+                    field("No. Files"; Rec."No. Files") { }
+                    field("No. Tables"; Rec."No. Tables") { }
                 }
                 group(Encoding)
                 {
-                    field("Prefered Compression Mode"; Rec."Prefered Compression Mode")
+                    field("Prefered Compression Mode"; Rec."Prefered Compression Mode") { }
+                    group(CompLvl)
                     {
-                        ApplicationArea = all;
+                        ShowCaption = false;
+                        Visible = (Rec."Prefered Compression Mode" = Rec."Prefered Compression Mode"::"Auto (On-Premise)");
+                        field("Compression Level"; Rec."Compression Level") { }
                     }
-                    field("Enable Columns Transcoding"; Rec."Enable Columns Transcoding")
-                    {
-                        ApplicationArea = all;
-                    }
+                    field("Enable Columns Transcoding"; Rec."Enable Columns Transcoding") { }
                 }
                 group(Export)
                 {
                     Caption = 'Exported From';
 
-                    field("Exported From Company"; Rec."Exported From Company")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Exported Date Time"; Rec."Exported Date Time")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Diff. Export Start DT"; Rec."Diff. Export Start DT")
-                    {
-                        ApplicationArea = all;
-                    }
+                    field("Exported From Company"; Rec."Exported From Company") { }
+                    field("Exported Date Time"; Rec."Exported Date Time") { }
+                    field("Export Duration"; Rec."Export Duration") { }
+                    field("Import Duration"; Rec."Import Duration") { }
                 }
             }
             group(Threads)
             {
+                Visible = IsProcessing;
+
                 field("Process Status"; Rec."Process Status")
                 {
                     Editable = false;
@@ -87,41 +62,34 @@ page 51021 "TOO Pipou Archive Card"
                 group(Import)
                 {
                     Caption = 'Import';
-                    Visible = (Rec."Process Status" = Rec."Process Status"::"✅ Imported") OR (Rec."Process Status" = Rec."Process Status"::"⌛ Importing");
+                    Visible = (Rec."Process Status" = Rec."Process Status"::"✅ Imported") or (Rec."Process Status" = Rec."Process Status"::"✅ Partially Imported") or (Rec."Process Status" = Rec."Process Status"::"⌛ Importing");
 
-                    field("Import Destination Company"; Rec."Import Destination Company")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Imported Files"; Rec."Imported Files")
-                    {
-                        ApplicationArea = all;
-                    }
-                    field("Import Use SQL Bulk"; Rec."Import Use SQL Bulk")
-                    {
-                        ApplicationArea = All;
-                    }
+                    field("Import Destination Company"; Rec."Import Destination Company") { }
+                    field("Imported Files"; Rec."Imported Files") { }
+                    field("Import Use SQL Bulk"; Rec."Import Use SQL Bulk") { }
+                    field("Import Warning / Error"; Rec."Import Warning / Error") { }
                 }
 
                 grid(ProcessActions)
                 {
                     ShowCaption = false;
-                    Field(Stop; StopTxt)
+                    field(Stop; StopTxt)
                     {
-                        ShowCaption = false;
                         Editable = false;
+                        ShowCaption = false;
 
                         trigger OnDrillDown()
                         var
-                            Thread: Record "TOO Pipou Thread";
                             ActiveSession: Record "Active Session";
+                            Thread: Record "TOO Pipou Thread";
                             ConfirmLbl: Label 'This action will stop all threads and any uncommited import/export data will be lost. This is irreversible. Continue ?';
                         begin
-                            if not Confirm(ConfirmLbl) then exit;
+                            if not Confirm(ConfirmLbl) then
+                                exit;
 
                             // Check if another export is running
                             Thread.SetRange("Archive ID", Rec."Archive ID");
-                            if Thread.FindSet() then begin
+                            if Thread.FindSet() then
                                 repeat
                                     // Close session
                                     if Thread."Session ID" <> 0 then begin
@@ -130,7 +98,6 @@ page 51021 "TOO Pipou Archive Card"
                                             StopSession(Thread."Session ID", 'Manually stopped by user ' + UserId());
                                     end;
                                 until Thread.Next() = 0;
-                            end;
                             Thread.DeleteAll();
 
                             // Remove exported residual files / clear importing state
@@ -143,10 +110,10 @@ page 51021 "TOO Pipou Archive Card"
                         end;
 
                     }
-                    Field(Refresh; RefreshTxt)
+                    field(Refresh; RefreshTxt)
                     {
-                        ShowCaption = false;
                         Editable = false;
+                        ShowCaption = false;
 
                         trigger OnDrillDown()
                         begin
@@ -164,11 +131,12 @@ page 51021 "TOO Pipou Archive Card"
 
                 field(GlobalProgressBar; GlobalProgressBar)
                 {
-                    Caption = 'Progression';
+                    Caption = 'Progression total';
+                    ColumnSpan = 2;
                     Editable = false;
                     Width = 25;
-                    ColumnSpan = 2;
                 }
+
                 field(GlobalEstRemDuration; GlobalEstRemDuration)
                 {
                     Caption = 'Estimated Remaining Duration';
@@ -180,16 +148,12 @@ page 51021 "TOO Pipou Archive Card"
                     Caption = 'Avg. Rec/S';
                     Editable = false;
                 }
-                field("Import Warning / Error"; Rec."Import Warning / Error")
-                {
-                    Editable = false;
-                    BlankZero = true;
-                    Style = Unfavorable;
-                }
             }
             group(ThreadsPart)
             {
                 ShowCaption = false;
+                Visible = IsProcessing;
+
                 part(ThreadsList; "TOO Pipou Threads")
                 {
                     SubPageLink = "Archive ID" = field("Archive ID");
@@ -210,7 +174,7 @@ page 51021 "TOO Pipou Archive Card"
                     PreviousStatusExporting: Boolean;
                     ConfirmLbl: Label 'Export as finished. Would you like to download the archive ? (~%1 %2) ?';
                 begin
-                    PreviousStatusExporting := (Rec."Process Status" = rec."Process Status"::"⌛ Exporting");
+                    PreviousStatusExporting := (Rec."Process Status" = Rec."Process Status"::"⌛ Exporting");
                     if RefreshCounter > 900 then
                         exit; // stop after 15mn
                     if AutoRefresh and IsProcessing then begin
@@ -221,10 +185,9 @@ page 51021 "TOO Pipou Archive Card"
                     end;
                     if Rec."Process Status" in [Rec."Process Status"::"✅ Exported", Rec."Process Status"::"✅ Imported", Rec."Process Status"::"✅ Partially Imported", Rec."Process Status"::" "] then begin
                         AutoRefresh := false;
-                        if PreviousStatusExporting and (Rec."Process Status" = Rec."Process Status"::"✅ Exported") then begin
-                            if Confirm(StrSubstNo(ConfirmLbl, round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
+                        if PreviousStatusExporting and (Rec."Process Status" = Rec."Process Status"::"✅ Exported") then
+                            if Confirm(StrSubstNo(ConfirmLbl, Round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
                                 Rec.DownloadArchiveFile();
-                        end;
                     end else
                         CurrPage.PageAutoRefreshAddin.Run(1000);
                     CurrPage.Update(false);
@@ -241,31 +204,29 @@ page 51021 "TOO Pipou Archive Card"
             action(Download)
             {
                 Caption = 'Download archive';
-                ApplicationArea = All;
                 Image = Download;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
                     ConfirmLbl: Label 'This archive file is ~%1 %2.\ Download the file ?';
                 begin
-                    if Confirm(StrSubstNo(ConfirmLbl, round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
+                    if Confirm(StrSubstNo(ConfirmLbl, Round(Rec."Files Compressed Size (KB)" / 1024, 0.1), 'MB')) then
                         Rec.DownloadArchiveFile();
                 end;
             }
             action(Apply)
             {
                 Caption = 'Apply Data';
-                ToolTip = 'Apply archive data content to a specific company';
-                ApplicationArea = All;
                 Image = ImportDatabase;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
+                ToolTip = 'Apply archive data content to a specific company';
 
                 trigger OnAction()
                 var
@@ -279,20 +240,19 @@ page 51021 "TOO Pipou Archive Card"
                     end;
                 end;
             }
-            action("Reset")
+            action(Reset)
             {
                 Caption = 'Reset Import State';
-                ApplicationArea = All;
                 Image = ResetStatus;
                 Promoted = true;
-                PromotedOnly = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
-                    ArchTables: Record "TOO Pipou Archive Tables";
                     ArchFiles: Record "TOO Pipou Archive Files";
+                    ArchTables: Record "TOO Pipou Archive Tables";
                     ArchLogs: Record "TOO Pipou Import Log";
                     StatusErrLbl: Label 'The processing state must be empty to reset import.';
                 begin
@@ -307,7 +267,7 @@ page 51021 "TOO Pipou Archive Card"
                         ArchLogs.SetRange("Archive ID", Rec."Archive ID");
                         ArchLogs.DeleteAll();
                         ArchTables.SetRange("Archive ID", Rec."Archive ID");
-                        ArchTables.ModifyAll("Preimport Truncated", false);
+                        ArchTables.ModifyAll("PreImport Truncated", false);
                     end;
                 end;
             }
@@ -317,38 +277,38 @@ page 51021 "TOO Pipou Archive Card"
 
     trigger OnAfterGetRecord()
     var
-        Threads: Record "TOO Pipou Thread";
+        Thread: Record "TOO Pipou Thread";
     begin
         if Rec."Process Status" in [Rec."Process Status"::"⌛ Exporting", Rec."Process Status"::"⌛ Importing", Rec."Process Status"::"✅ Exported", Rec."Process Status"::"✅ Imported", Rec."Process Status"::"✅ Partially Imported"] then
             IsProcessing := true
         else begin
-            Threads.SetRange("Archive ID", Rec."Archive ID");
-            IsProcessing := not Threads.IsEmpty;
+            Thread.SetRange("Archive ID", Rec."Archive ID");
+            IsProcessing := not Thread.IsEmpty;
         end;
     end;
 
     local procedure UpdateProcessProgression()
     var
-        Threads: Record "TOO Pipou Thread";
-        ElapsedTime: Duration;
+        Thread: Record "TOO Pipou Thread";
         RemProgress: Decimal;
+        ElapsedTime: Duration;
     begin
         if IsProcessing then begin
+            Thread.CalcSums("Total Rec. Proceed");
+
             // Progress bar
-            Threads.SetRange("Archive ID", Rec."Archive ID");
-            Threads.CalcSums("Total Rec. Proceed", "Total Rec. To Process");
-            if Threads."Total Rec. To Process" > 0 then
-                GlobalProgress := (Threads."Total Rec. Proceed" / Threads."Total Rec. To Process")
+            if Rec."Total Records" > 0 then
+                GlobalProgress := (Thread."Total Rec. Proceed" / Rec."Total Records")
             else
                 GlobalProgress := 0;
-            GlobalProgressBar := ProgressBar(GlobalProgress);
+            GlobalProgressBar := ProgressBar(GlobalProgress, 15);
 
             // Remaining Duration
-            if (GlobalProgress > 0) and (Threads."Total Rec. Proceed" > 1000) then begin
+            if (GlobalProgress > 0) and (Thread."Total Rec. Proceed" > 1000) then begin
                 ElapsedTime := Round(CurrentDateTime - Rec."Process Started At", 1000);
                 RemProgress := (1 - GlobalProgress) / GlobalProgress;
                 GlobalEstRemDuration := Round(ElapsedTime * RemProgress + 5000, 10000, '>');
-                AvgRecPerSecond := round(Threads."Total Rec. Proceed" / ElapsedTime * 1000, 1);
+                AvgRecPerSecond := Round(Thread."Total Rec. Proceed" / ElapsedTime * 1000, 1);
             end else begin
                 GlobalEstRemDuration := 0;
                 AvgRecPerSecond := 0;
@@ -366,13 +326,13 @@ page 51021 "TOO Pipou Archive Card"
             AutoRefresh := false;
     end;
 
-    procedure ProgressBar(ProgressPercent: Decimal) AsciiResult: Text
+    procedure ProgressBar(ProgressPercent: Decimal; Len: Integer) AsciiResult: Text
     var
         i: Integer;
         ProgressChar: Integer;
     begin
-        ProgressChar := Round(ProgressPercent * 12, 1, '<') + 1;
-        for i := 1 to 12 do begin
+        ProgressChar := Round(ProgressPercent * Len, 1, '<') + 1;
+        for i := 1 to Len do
             if i < ProgressChar then
                 AsciiResult += '▰'
             else
@@ -380,20 +340,19 @@ page 51021 "TOO Pipou Archive Card"
                     AsciiResult += '▴'
                 else
                     AsciiResult += '▱';
-        end;
     end;
 
 
     var
+        AutoRefresh: Boolean;
         IsProcessing: Boolean;
         GlobalProgress: Decimal;
-        GlobalProgressBar: Text;
         GlobalEstRemDuration: Duration;
         AvgRecPerSecond: Integer;
-        RefreshTxt: Text;
-        StopTxt: Text;
+        RefreshCounter: Integer;
         RefreshLbl: Label '🔄 Refresh';
         StopLbl: Label '🛑 Stop Process';
-        AutoRefresh: Boolean;
-        RefreshCounter: Integer;
+        GlobalProgressBar: Text;
+        RefreshTxt: Text;
+        StopTxt: Text;
 }

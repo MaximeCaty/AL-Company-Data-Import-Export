@@ -12,11 +12,10 @@ dotnet
 
     assembly("Microsoft.Dynamics.Nav.NavUserAccount")
     {
-        type("Microsoft.Dynamics.Nav.NavUserAccount.NavUserAccountHelper"; TOONavUserAccountHelper)
-        {
-        }
+        type("Microsoft.Dynamics.Nav.NavUserAccount.NavUserAccountHelper"; TOONavUserAccountHelper) { }
     }
     assembly("BCBulkInsertHelper")
+
     {
         type("BCBulkInsertHelper.BulkImporterExt"; TOOSQLBulkImporterExt) { }
     }
@@ -26,8 +25,16 @@ dotnet
         type("ZstdNet.Compressor"; TOOZstdCompressor) { }
         type("ZstdNet.CompressionOptions"; TOOZstdCompressionOptions) { }
     }
+    assembly("mscorlib")
+    {
+        type("System.Array"; "Array") { }
+        type("System.Byte"; "Byte") { }
+        type("System.Type"; "Type") { }
+        type("System.IO.Stream"; "Stream") { }
+        type("System.IO.MemoryStream"; "MemoryStream") { }
+    }
 
-    assembly("System.Diagnostics.Process")
+    assembly("System")
     {
         type("System.Diagnostics.Process"; TOOProcess) { }
         type("System.Diagnostics.ProcessStartInfo"; TOOProcessStartInfo) { }

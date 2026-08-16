@@ -32,7 +32,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Data.SqlClient">
-      <HintPath>..\..\..\..\Desktop\Microsoft.Data.SqlClient.dll</HintPath>
+      <HintPath>.\Microsoft.Data.SqlClient.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

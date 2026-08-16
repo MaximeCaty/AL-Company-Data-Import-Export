@@ -26,9 +26,13 @@ table 51009 "TOO Pipou Thread"
         field(1100; Status; Option)
         {
             DataClassification = SystemMetadata;
-            OptionMembers = " ","Starting","Exporting Data","Compressing - Storing","Importing Data","Commiting","Decompressing - Decoding","Completed ✅","❌ Error","Truncating Table";
+            OptionMembers = " ",Starting,"Exporting Data","Compressing - Storing","Importing Data",Commiting,"Decompressing - Decoding","Completed ✅","❌ Error","Truncating Table","Rebuilding Indexes","Building Dictionaries";
         }
         field(1105; "Error Message"; Text[2048])
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(1106; "Error CallStack"; Text[2048])
         {
             DataClassification = SystemMetadata;
         }

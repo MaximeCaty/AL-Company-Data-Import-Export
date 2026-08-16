@@ -1,9 +1,9 @@
 #if ONPREM
 page 51013 "TOO Select File Path"
 {
+    ApplicationArea = All;
     Caption = 'Choose a file path';
     PageType = Card;
-    ApplicationArea = All;
 
     layout
     {
@@ -16,6 +16,7 @@ page 51013 "TOO Select File Path"
                 field(FilePath; FilePath)
                 {
                     Caption = 'File Name';
+                    ApplicationArea = All;
 
                     trigger OnValidate()
                     var
@@ -24,7 +25,7 @@ page 51013 "TOO Select File Path"
                         if not Fl.Open(FilePath) then
                             Error('Unable to Open the provided file path. Please check availability form the server instance and read permission for the busienss central service account.')
                         else begin
-                            FileSize := format(Fl.Len() div (1024 * 1024)) + ' MB';
+                            FileSize := Format(Fl.Len() div (1024 * 1024)) + ' MB';
                             Fl.Close();
                         end;
                     end;
@@ -34,6 +35,7 @@ page 51013 "TOO Select File Path"
                 {
                     Caption = 'File Size';
                     Editable = false;
+                    ApplicationArea = All;
                 }
             }
         }

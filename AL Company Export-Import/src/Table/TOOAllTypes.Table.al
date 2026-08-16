@@ -1,3 +1,4 @@
+// Only used to store default fieldreference BC values for faster comparison
 table 51016 "TOO All Types"
 {
     DataClassification = ToBeClassified;

@@ -1,0 +1,9 @@
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\obj\Debug\BCBulkInsertHelper.csproj.AssemblyReference.cache
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\obj\Debug\BCBulkInsertHelper.csproj.CoreCompileInputs.cache
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\bin\Debug\BCBulkInsertHelper.dll
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\bin\Debug\BCBulkInsertHelper.pdb
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\bin\Debug\Microsoft.Data.SqlClient.dll
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\bin\Debug\System.Memory.dll
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\obj\Debug\BCBulkInsertHelper.csproj.CopyComplete
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\obj\Debug\BCBulkInsertHelper.dll
+C:\Users\mc-admin\source\repos\BCBulkInsertHelper\BCBulkInsertHelper\obj\Debug\BCBulkInsertHelper.pdb
