@@ -1,0 +1,122 @@
+body {
+  font-family: 'Segoe UI';
+}
+
+.drop-container {
+  position: relative;
+  display: flex;
+  gap: 5px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 160px;
+  padding: 20px;
+  cursor: pointer;
+  transition: background .2s ease-in-out, border .2s ease-in-out;
+}
+
+.drop-container:hover,
+.drop-container.drag-active {
+  background: #d9f0f2;
+  border-color: #00b7c3;
+}
+
+.drop-container:hover .drop-title,
+.drop-container.drag-active .drop-title {
+  color: #222;
+}
+
+.drop-title {
+  color: #5e5e5e;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  transition: color .2s ease-in-out;
+}
+
+input[type=file] {
+  width: 350px;
+  max-width: 100%;
+  color: #444;
+  padding: 5px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #555;
+}
+
+input[type=file]::file-selector-button {
+  margin-right: 20px;
+  border: none;
+  background: #008489;
+  padding: 10px 20px;
+  border-radius: 0px;
+  color: #fff;
+  cursor: pointer;
+  transition: background .5s ease-in-out;
+}
+
+input[type=file]::file-selector-button:hover {
+  background: #007780;
+}
+
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 90deg;
+  inherits: false;
+}
+/*
+Animated rainbow gradient border effect
+*/
+:root {
+  --clr-card: #ffffff;
+  --clr-1: #00b7c3;
+  --clr-2: #5278aa;
+  --clr-3: #a2decf;
+}
+
+*,
+*::after,
+*::before {
+  box-sizing: border-box;
+}
+
+.card {
+  margin-left: 20px;
+  margin-top: 10px;
+  margin-right: 20px;
+  border-radius: 10px;
+  background-color: #ffffff;
+}
+
+.card::after,
+.card::before {
+  content: " ";
+  position: absolute;
+  z-index: -1;
+  inset: -0.2rem;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    var(--clr-card),
+    var(--clr-1),
+    var(--clr-2),
+    var(--clr-3),
+    var(--clr-2),
+    var(--clr-1),
+    var(--clr-card)
+  );
+  border-radius: inherit;
+  animation: rotate 2.5s linear infinite;
+}
+
+.card::after {
+  filter: blur(0.25rem);
+}
+
+@keyframes rotate {
+  0% {
+    --gradient-angle: 0deg;
+  }
+  100% {
+    --gradient-angle: 360deg;
+  }
+}
