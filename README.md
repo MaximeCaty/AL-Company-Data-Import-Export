@@ -10,7 +10,7 @@ Export a company to a compressed archive, import it into another instance: diffe
 
 The modern replacement for NAV's *"Import / Export Data File"* — without the frozen client, the all-or-nothing rollback, or the failure on the first schema difference.
 
-![Assisted company data export wizard](AL-Export-UI.png)
+<img src="AL-Export-UI.png" alt="Assisted company data export wizard" width="70%"/>
 
 **8.6 million records · 45 GB database → 220 MB archive → imported in 14 minutes.** *(on-premise, 4 threads — full numbers in [Performance](#4-performance))*
 
@@ -94,7 +94,7 @@ If you ever watched NAV's *Export Data* lock a client for an hour and then roll 
 </tr>
 <tr>
 <td><img src="NavExportData.png" alt="Legacy NAV Export Data File form" width="100%"/></td>
-<td><img src="AL-Export-UI.png" alt="Assisted company data export wizard" width="100%"/></td>
+<td><img src="AL-Export-UI.png" alt="Assisted company data export wizard" width="80%"/></td>
 </tr>
 </table>
 
@@ -102,11 +102,11 @@ If you ever watched NAV's *Export Data* lock a client for an hour and then roll 
 
 ## 3. Screenshots
 
-![Import wizard — table matching step with Matched Table ID column and mapping status](AL-Import-Match.png)
+<img src="AL-Import-Match.png" alt="Import wizard — table matching step with Matched Table ID column and mapping status" width="75%"/>
 
 *Import step 3: every source table matched to a destination table. Override the mapping per table, drill down to remap fields.*
 
-![Import progress page listing each thread](AL-Import-Progress-Page.png)
+<img src="AL-Import-Progress-Page.png" alt="Import progress page listing each thread" width="75%"/>
 
 *Import progress per thread, with a stop-all action. Works as a foreground dialog too.*
 
