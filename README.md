@@ -13,8 +13,8 @@ Use this app to copy a company across different instances, without replacing the
 | Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
 | UI Visibility            | ❌ freeze         | ✅ Assisted setup + threads progression |
 | Error recovery           | ❌ full rollback | ✅ Log and continues to next chunk    |
-| Multithreaded processing | ❌          | ✅                               |
-| Tight file size          | ❌ basic compression | ✅ Column-oriented storage + zStd/libbsc |
+| Multithreaded            | ❌          | ✅                               |
+| Smaller file size        | ❌ basic compression | ✅ Column-oriented file + single byte dict + OnPrem advanced compression |
 
 ### Performance Sample
 
