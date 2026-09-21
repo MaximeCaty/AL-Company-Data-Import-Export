@@ -56,10 +56,8 @@ Search for the page **"Assisted company data export"**:
 
 ### Import
 
-Create a new **blank company** first, then search for **"Assisted company data import"**:
-
 1. Upload an archive — the system reads its metadata and prepares the import.
-2. Select the destination company.
+2. Select the destination company name (or pick an existing company to overwrite)
 3. Review the table list and the matching (see the mapping screenshot below).
 4. Review the summary and start.
 
@@ -108,7 +106,7 @@ If you ever watched NAV's *Export Data* lock a client for an hour and then roll 
 
 <img src="AL-Company-Data-Import-Export/Images/AL-Import-Progress-Page.png" alt="Import progress page listing each thread" width="75%"/>
 
-*Import progress per thread, with a stop-all action. Works as a foreground dialog too.*
+*Import progress per thread, with a stop-all action, displayed if the foreground dialog is closed.*
 
 ---
 
@@ -203,7 +201,7 @@ How data is laid out inside the archive. Not needed to use the tool — read on 
 
 ### Compression modes
 
-| Mode | Algorithm | Column-oriented | Dictionaries | Max chunk | System fields |
+| Mode | Algorithm | Column-oriented | Dictionaries | Table Max chunk | System fields |
 |---|---|---|---|---|---|
 | **Auto (On-Premise)** | zStd → libbsc → kanzi \* | ✅ | ✅ | 75 MB | ✅ |
 | **Auto (SaaS)** | GZip 6 / 9 | ✅ | ✅ | 200 MB | ❌ |
@@ -214,7 +212,8 @@ Manual modes — **GZip** (level 6/9), **zStd** (level 12/22), **Libbsc** (level
 
 <details>
 <summary><b>Archive structure</b></summary>
-
+Archive are TAR files that contains metadata as JSON, table data as compressed binaries, and dictionnary binaries illustrated by the following.
+   
 ```
 Archive.zip/
 |   datameta.json                 // table schemas, file list, general info
@@ -244,16 +243,16 @@ Data is written in binary, which parses faster and packs smaller than text forma
 - **Column-oriented** — larger tables (≥ 100 rows): better compression, faster import, and empty columns are skipped entirely (detected by comparing to BC default values). Stored as a compressed TAR: one stream per column + a JSON with column definitions.
 - **MD5 check** after each file is decompressed, to guarantee integrity.
 
-<img src="AL-Company-Data-Import-Export/Images/row-vs-column-format.webp" alt="Row-oriented vs column-oriented layout" width="70%"/>
+<img src="AL-Company-Data-Import-Export/Images/row-vs-column-format.webp" alt="Row-oriented vs column-oriented layout" width="50%"/>
 
 </details>
 
 <details>
-<summary><b>Dictionaries</b></summary>
+<summary><b>Single byte dictionaries</b></summary>
 
 Compressors are great at squeezing repeated values, but when a field holds a small fixed set of values referenced thousands of times across tables, it's cheaper to write the list once and store a single-byte index everywhere else. Smaller files, faster read and write.
 
-<img src="dict-encoding.png" alt="Dictionary encoding of repeated field values" width="70%"/>
+<img src="dict-encoding.png" alt="Dictionary encoding of repeated field values" width="50%"/>
 
 Candidates are detected automatically:
 - **Option / Enum fields** — whenever the option has fewer than 256 ordinals (almost all of them): the 4-byte AL ordinal becomes a 1-byte index. The index → ordinal map lives in `optionset.bin` (usually ~1 KB).
