@@ -1,10 +1,17 @@
-.App can be found under [release folder here.](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)  
-If you're happy with it and on-prem, git a try to the on-prem+dll version that offer faster import and better compression.
 
 # AL Company Data-Import-Export
 
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE.md)
+[![Latest release](https://img.shields.io/github/v/release/MaximeCaty/AL-Company-Data-Import-Export?label=release)](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)
+[![Business Central 23.0+](https://img.shields.io/badge/Business%20Central-23.0%2B-0078D4.svg)](#install)
+[![Cloud & On-Premise](https://img.shields.io/badge/target-Cloud%20%7C%20OnPrem-green.svg)](#-OnPrem-vs-SaaS-Limitations)
+
 Offer Business Central replacement for legacy NAV "Import / Export Data File".  
 Use this app to copy a company across different instances, without replacing the whole database, or migrate schema differences.
+
+.App can be found under [release folder here.](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)  
+If you're happy with it and on-prem, git a try to the on-prem+dll version that offer faster import and better compression.
+
 
 | Feature                  | Legacy NAV | This extension                  |
 |--------------------------|------------|---------------------------------|
