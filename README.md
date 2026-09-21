@@ -1,194 +1,280 @@
-
-# AL Company Data-Import-Export
+# AL Company Data Import / Export
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE.md)
 [![Latest release](https://img.shields.io/github/v/release/MaximeCaty/AL-Company-Data-Import-Export?label=release)](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)
 [![Business Central 23.0+](https://img.shields.io/badge/Business%20Central-23.0%2B-0078D4.svg)](#install)
-[![Cloud & On-Premise](https://img.shields.io/badge/target-Cloud%20%7C%20OnPrem-green.svg)](#-OnPrem-vs-SaaS-Limitations)
+[![Cloud & On-Premise](https://img.shields.io/badge/target-Cloud%20%7C%20OnPrem-green.svg)](#5-saas-vs-on-premise)
 
-Offer Business Central replacement for legacy NAV "Import / Export Data File".  
-Use this app to copy a company across different instances, without replacing the whole database, or migrate schema differences.
+**Copy one company between Business Central environments — any version, any schema.**
+Export a company to a compressed archive, import it into another instance: different BC version, different extensions, different tenant. On-premise or SaaS.
 
-.App can be found under [release folder here.](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)  
-If you're happy with it and on-prem, git a try to the on-prem+dll version that offer faster import and better compression.
+The modern replacement for NAV's *"Import / Export Data File"* — without the frozen client, the all-or-nothing rollback, or the failure on the first schema difference.
 
+![Assisted company data export wizard](AL-Export-UI.png)
 
-| Feature                  | Legacy NAV | This extension                  |
-|--------------------------|------------|---------------------------------|
-| Multiple Company Imp/Exp | ✅         | ❌ One company at a time       |
-| Data selection  | ❌ all + choose globale Y/N | ✅ per table        |
-| Schema mismatch handling | ❌ fail on first schema difference         | ✅ Auto-match + manual control   |
-| UI Visibility            | ❌ freeze         | ✅ Assisted setup + threads progression |
-| Error recovery           | ❌ full rollback | ✅ Log and continues to next chunk    |
-| Multithreaded            | ❌          | ✅                               |
-| Smaller file size        | ❌ basic compression | ✅ Column-oriented file + single byte dict + OnPrem advanced compression |
+**8.6 million records · 45 GB database → 220 MB archive → imported in 14 minutes.** *(on-premise, 4 threads — full numbers in [Performance](#4-performance))*
 
-### Performance Sample
+- **Pick what you copy** — per-table selection, with or without logs, archives, global data, system fields.
+- **Schema mismatch is handled** — tables and fields are auto-matched across versions; you review and override the mapping before import.
+- **Nothing freezes** — multithreaded, progress per thread, errors logged and skipped instead of rolling back everything.
+- **Small archives** — column-oriented binary format with dictionary encoding; zStd / libbsc / kanzi compressors on-premise.
 
-| Comparison v1.0.0.4 / v2.0.0.0<br>(4 threads - auto - no system fields)     | Cronus W1 BC230           | Misc company                    |
-|-----------------------------------------------------------------------------|---------------------------|---------------------------------|
-| Database MDF disk size                                                      | 1 GB                      | 45 GB                           |
-| Tables with data                                                            | 548                       | 365                             |
-| Number of records                                                           | 43'783                    | 8'662'740                       |
-| Export Duration (Cloud Format)                                              | 4.4 s / 4.1 s (-6%)       | 12 minutes / 6 minutes (-50 %)  |
-| Exported Archive size (GZip)                                                | 3.5 MB / 3.2 MB (-8%)     | 357 MB / 252 MB (-30%)          |
-| Exported Archive size (OnPrem Max Compression)                              |  -        / 2.8 MB (-20%) |  -         / 220 MB (-43%)      |
-| Import Duration                                                             | 9.3 s / 7.8 s (-16%)      | 53 minutes / 49 minutes (-7.5%) |
-| Import Duration (OnPrem SQL DLL)                                            | 8.3 s / 7.0 s (-15%)      | 17 minutes / 14 minutes (-17%)  |
+## Install
 
+1. Download the `.app` from **[Releases](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases)** — SaaS or On-Premise version.
+2. On-premise: optionally add the SQL bulk-insert DLL and the compressor executables for ~3× faster imports and ~40% smaller files → [On-Premise setup](#on-premise-setup).
+3. In the web client, search **"Assisted company data export"** / **"Assisted company data import"**.
 
-### OnPrem vs SaaS Limitations
+Requires Business Central **23.0 or later**.
 
-Saas usage as some tradeoff regarding OnPrem :
+## Contents
 
-|                               | SaaS               | On-Premise                           |
-|-------------------------------|--------------------|--------------------------------------|
-| Exported File size            |  ~35% larger : Gzip | zStd + libbsc compressors           |
-| Speed                         | Native AL          | SQL bulk via DLL, ~3x faster on large table  |
-| System fields (Created/Modified/At/By) | Original value lost | Original value imported via SQL |
+1. [How to use](#1-how-to-use)
+2. [Why not the legacy NAV tool](#2-why-not-the-legacy-nav-tool)
+3. [Screenshots](#3-screenshots)
+4. [Performance](#4-performance)
+5. [SaaS vs On-Premise](#5-saas-vs-on-premise)
+6. [Installation details](#6-installation-details)
+7. [Archive format internals](#7-archive-format-internals)
+8. [License & feedback](#8-license--feedback)
 
-## Export 
+---
 
-Search for the page "Assisted company data export" :
+## 1. How to use
 
-Steps :
-1. Select the company to export
-2. Choose data scope : classified data, system fields, include global data / logs / archive
-4. Archive data format ("Auto" by default)
-5. Review the list of tables included in export. You may remove table manualy from the list.
-6. Review summary. Recommanded to use max 2 threads when the instance is in use, to avoid performance impact on users while exporting.
+### Export
 
-![NAV Export Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Export-UI.png?raw=true)
+Search for the page **"Assisted company data export"**:
 
+1. Select the company to export.
+2. Choose the data scope: classified data, system fields, include global data / logs / archives.
+3. Pick the archive format (**Auto** by default — see [Compression modes](#compression-modes)).
+4. Review the list of tables included. Remove tables manually if you want.
+5. Review the summary and start.
 
-## Import 
+> 💡 Use at most **2 threads** when the instance is in use — exporting competes with your users for CPU and SQL.
 
-Create a new blank company first.
+### Import
 
-Then search for the page "Assisted company data import"
+Create a new **blank company** first, then search for **"Assisted company data import"**:
 
-1. Upload an archive, the system read metadata and prepare import
-2. Select destination company
-3. Review the list of table to import and matching
-4. Review summary. Recommanded to use max 2 threads when the instance is in use, to avoid performance impact on users while importing.
+1. Upload an archive — the system reads its metadata and prepares the import.
+2. Select the destination company.
+3. Review the table list and the matching (see the mapping screenshot below).
+4. Review the summary and start.
 
-![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Match.png?raw=true)
+Same advice: 2 threads max on a live instance.
 
-*You can change table mapping manually at this step with the column "Matched Table ID". Drill down on the "No. fields" column to change a table field mapping details when needed.*
- - *"⚠️ Partial" mean that some fields are not mapped to the destination table.*
- - *"⛔ Missing" mean that the table is not mapped to a destination table.*
+**Table & field mapping.** At step 3 you can change any table mapping with the column *Matched Table ID*. Drill down on the *No. fields* column to adjust field mapping for a table.
+- ⚠️ **Partial** — some fields are not mapped to the destination table.
+- ⛔ **Missing** — the table is not mapped to any destination table.
 
-![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/AL-Import-Progress-Page.png?raw=true)
+Progress shows either in a foreground dialog or on a separate page listing every thread, with an action to stop all threads.
 
-*Import progress can be either show on a foreground dialog or with this separated page, showing each thread progression. An action allow you to stop all threads.*
+---
 
+## 2. Why not the legacy NAV tool
 
+If you ever watched NAV's *Export Data* lock a client for an hour and then roll back on one bad field — this is for you.
 
-## Deployment & Installation
+| | Legacy NAV "Import / Export Data File" | This extension |
+|---|---|---|
+| Data selection | Whole database, global data Y/N | ✅ Per table, per scope |
+| Schema differences | ❌ Fails on the first mismatch | ✅ Auto-match + manual mapping |
+| Client during the run | ❌ Frozen | ✅ Assisted setup, per-thread progress |
+| Error in the data | ❌ Full rollback | ✅ Logged, continues with the next chunk |
+| Threads | ❌ Single | ✅ Multithreaded |
+| Archive size | No compression - plain rows binary data from SQL | ✅ Column-oriented + shared dictionaries + frontier compression |
+| Several companies in one archive | ✅ | ❌ One company per archive |
 
-Download .APP from the repository Release folder. Additional DLL for OnPremise can also be found in the zip.
+<table>
+<tr>
+<th>NAV — Export Data File</th>
+<th>This extension — Assisted export</th>
+</tr>
+<tr>
+<td><img src="NavExportData.png" alt="Legacy NAV Export Data File form" width="100%"/></td>
+<td><img src="AL-Export-UI.png" alt="Assisted company data export wizard" width="100%"/></td>
+</tr>
+</table>
 
+---
 
-### On-Premise 
-1. Enable write inside TryFunction on the Business Central instance : ```SetNavServer-Configuration Instance -KeyName DisableWriteInsideTryFunctions -KeyValue false```
-2. BC 27+ : to enable SQL DLL import, and advanced compressor : ```SetNavServer-Configuration Instance -KeyNam EnforceUserPathForAlFileOperations -KeyValue false```
-4. Copy DLLs from ```.netpackages``` in Business Central ```Service/Addin``` folder
-5. Restart Business Central instance service 
-6. Publish the app
+## 3. Screenshots
 
-- **❗Recommanded :** for smaller archive file, use frontier compressor programs, put bsc.exe and kanzi.exe in Business Central Addin folder. The app will use it when available.
-<br>Both executable are available in the zip. 
-<br>Original libbsc.exe repository : [GitHub Libbsc release, by Ilya Grebnov](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12) 
-<br>Original kanzi.exe repository : [GitHub Kanzi-Cpp, By Frederic Langlet](https://github.com/flanglet/kanzi-cpp) 
+![Import wizard — table matching step with Matched Table ID column and mapping status](AL-Import-Match.png)
 
+*Import step 3: every source table matched to a destination table. Override the mapping per table, drill down to remap fields.*
 
-### Cloud 
+![Import progress page listing each thread](AL-Import-Progress-Page.png)
 
-Upload the .APP from the release folder - SaaS version
+*Import progress per thread, with a stop-all action. Works as a foreground dialog too.*
 
-Or compile it yourself from the source code :
+---
 
-1. Simply remove the preprocessorSymbols in ```app.json``` :
-  ```
-  "preprocessorSymbols": [
-    "ONPREM"  <- Remove this
-  ]
-  ```
-2. Change the target to cloud : ```"target": "Cloud",```
+## 4. Performance
 
-Thats it! The extension compile for SaaS.
-  
+Version 2.0.0.0, 4 threads, Auto format, without system fields.
 
-## Archive File Format & Encoding
+| | Cronus W1 (BC 23) | Real company |
+|---|---|---|
+| Database size (MDF) | 1 GB | 45 GB |
+| Tables with data | 548 | 365 |
+| Records | 43 783 | 8 662 740 |
+| **Export** (cloud format) | 4.1 s | 6 min |
+| Archive size — GZip (SaaS) | 3.2 MB | 252 MB |
+| Archive size — max compression (on-prem) | 2.8 MB | 220 MB |
+| **Import** (native AL) | 7.8 s | 49 min |
+| **Import** (on-prem SQL DLL) | 7.0 s | 14 min |
 
-This chapter explain how the data is structured inside archive files.
+<details>
+<summary>Compared to v1.0.0.0</summary>
 
-### Options offered in the assisted export
+| | Cronus W1 | Real company |
+|---|---|---|
+| Export duration | 4.4 s → 4.1 s (−6%) | 12 min → 6 min (−50%) |
+| Archive size (GZip) | 3.5 MB → 3.2 MB (−8%) | 357 MB → 252 MB (−30%) |
+| Archive size (on-prem max) | — → 2.8 MB (−20%) | — → 220 MB (−43%) |
+| Import duration | 9.3 s → 7.8 s (−16%) | 53 min → 49 min (−7.5%) |
+| Import duration (SQL DLL) | 8.3 s → 7.0 s (−15%) | 17 min → 14 min (−17%) |
 
-| **Mode**          | **Algorithm**         | **Best for**        | **Column Oriented storage** | **Dictionnaries** | **Max Table-Chunk Size** | **Include System fields** |
-|-------------------|-----------------------|---------------------|-----------------------------|-------------------|--------------------------|---------------------------|
-| Auto (On-Premise) | zStd → libbsc → kanzi*| Speed + Compression | ✅                           | ✅                 | 75 MB                    | ✅                     |
-| Auto (SaaS)       | Gzip 6/9              | Cloud compatibility | ✅                           | ✅                 | 200 MB                   | ❌                     |
-| Gzip              | Gzip 6/9              | Universal           | Manual                       | Manual              | Manual                   | Manual                 |
-| zStd              | zStandard level 12/22 | Best Speed/Ratio    | Manual                       | Manual              | Manual                   | Manual                 |
-| Libbsc            | bsc.exe level 1/2     | High compression    | Manual                       | Manual              | Manual                   | Manual                 |
-| Kanzi TPAQ        | kanzi.exe TPAQ        | Extreme compression | Manual                       | Manual              | Manual                   | Manual                 |
-* Auto (On-Premise) : use zstandard on small file (< 256 KB) then libbsc or kanzi for larger file. Depend the compression level choosen in the export assistant.
+</details>
 
+---
 
-### Archive structure 
+## 5. SaaS vs On-Premise
+
+Everything works on both. When exporting from OnPremise you may select a data format to use :
+> 💡 On-premise can use DLL and external compressors for faster and smaller archive, which SaaS cannot import.
+
+| | Cloud format | DotNet (OnPrem only) format |
+|---|---|---|
+| Compression | GZip — archives ~35% larger | zStd + libbsc / kanzi |
+| Import speed | Native AL | SQL bulk insert via DLL — ~3× faster on large tables |
+| System fields (`SystemCreatedAt/By`, `SystemModifiedAt/By`) | Original values lost | Original values restored via SQL |
+
+---
+
+## 6. Installation details
+
+Both `.app` files and the on-premise DLL / compressor bundle are on the [Releases](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/releases) page.
+
+### On-Premise setup
+
+1. Allow writes inside `TryFunction` on the service instance:
+   ```powershell
+   Set-NAVServerConfiguration -ServerInstance <Instance> -KeyName DisableWriteInsideTryFunctions -KeyValue false
+   ```
+2. **BC 27+** — allow the app to reach the DLL and compressor executables:
+   ```powershell
+   Set-NAVServerConfiguration -ServerInstance <Instance> -KeyName EnforceUserPathForAlFileOperations -KeyValue false
+   ```
+3. Copy the DLLs from [`AL Company Export-Import/.netpackages/`](AL%20Company%20Export-Import/.netpackages/) (also in the release zip) into the Business Central `Service/Add-ins` folder.
+4. Restart the service instance.
+5. Publish the app.
+
+**❗ Recommended for smaller archives:** put `bsc.exe` and `kanzi.exe` in the same `Add-ins` folder. The app uses them automatically when present. Both are in the release zip; originals:
+- [libbsc by Ilya Grebnov](https://github.com/IlyaGrebnov/libbsc/releases/tag/v3.3.12)
+- [kanzi-cpp by Frederic Langlet](https://github.com/flanglet/kanzi-cpp)
+
+Source of the DLL: [`BCBulkInsertHelper DLL/`](BCBulkInsertHelper%20DLL/).
+
+### Cloud
+
+Upload the SaaS `.app` from Releases. No DLL, no compressor executables — nothing else to do.
+
+To build it yourself from source, two edits in [`app.json`](AL%20Company%20Export-Import/app.json):
+
+1. Remove the `ONPREM` preprocessor symbol:
+   ```json
+   "preprocessorSymbols": [
+     "ONPREM"   <- remove
+   ]
+   ```
+2. Set `"target": "Cloud"`.
+
+That's it — the extension compiles for SaaS.
+
+---
+
+## 7. Archive format internals
+
+How data is laid out inside the archive. Not needed to use the tool — read on if you're curious why the files are small.
+
+### Compression modes
+
+| Mode | Algorithm | Column-oriented | Dictionaries | Max chunk | System fields |
+|---|---|---|---|---|---|
+| **Auto (On-Premise)** | zStd → libbsc → kanzi \* | ✅ | ✅ | 75 MB | ✅ |
+| **Auto (SaaS)** | GZip 6 / 9 | ✅ | ✅ | 200 MB | ❌ |
+
+\* zStandard for small files (< 256 KB), then libbsc or kanzi for larger ones, depending on the compression level chosen in the wizard.
+
+Manual modes — **GZip** (level 6/9), **zStd** (level 12/22), **Libbsc** (level 1/2), **Kanzi TPAQ** — expose the same settings (column storage, dictionaries, chunk size, system fields) individually.
+
+<details>
+<summary><b>Archive structure</b></summary>
 
 ```
 Archive.zip/
-|   datameta.json      // definition of tables schemas, files ansd general info
-|   Table1_File1.gzip  // Table chunk, row-oriented
-|   Table1_File2.gzip  // Table chunk, row-oriented
-|   Table2_File1.gzip  // Table chunk, row-oriented
+|   datameta.json                 // table schemas, file list, general info
+|   Table1_File1.gzip             // table chunk, row-oriented
+|   Table1_File2.gzip             // table chunk, row-oriented
+|   Table2_File1.gzip             // table chunk, row-oriented
 ...
-|   Table18_File1.colstore.bsc/  // Table chunk, column-oriented
-|   |   +-- columns.json         // columns infomrations
-|   |   +-- Column_1.bin         // column 1 binary data stream
-|   |   +-- Column_2.bin         // column 2 binary data stream
-|   |   +-- Column_3.bin         // column 3 binary data stream
+|   Table18_File1.colstore.bsc    // table chunk, column-oriented: a compressed TAR containing
+|   |   +-- columns.json          //   column definitions
+|   |   +-- Column_1.bin          //   column 1 binary stream
+|   |   +-- Column_2.bin          //   column 2 binary stream
+|   |   +-- Column_3.bin          //   column 3 binary stream
 ...
 |   dict/
-|   |   optionset.bin           // store the index of all options ordinal, for options/enum that have <= 256 values
-|   |   Vendor$No.bin            // store single byte index of each vendor "No." field when there is less than 254 different possible values
+|   |   optionset.bin             // ordinal index of every option/enum with <= 256 values
+|   |   Vendor$No.bin             // single-byte index for Vendor "No." when < 254 distinct values
 ```
 
+</details>
 
-### How data is encoded
+<details>
+<summary><b>How data is encoded</b></summary>
 
-The data is written in binary format, allowing faster parsing and smaller files than text based data such as CSV. 
-Binaries streams only contain table raw data, without any headers or separators. 
+Data is written in binary, which parses faster and packs smaller than text formats like CSV. Streams contain raw table data only — no headers, no separators.
 
- - Row-oriented — used for small tables (< 100 rows); simple and low-overhead.
- - Column-oriented — used for larger tables (≥ 100 rows); better compression ratio, faster imports, skipping empty columns to further reduce size (detected based on BC default values comparisons)
-   - Compressed TAR archive, containing each column as separate stream + json with columns definitions
- - MD5 hash verification after each file decompressed to ensure integrity
+- **Row-oriented** — small tables (< 100 rows): simple, low overhead.
+- **Column-oriented** — larger tables (≥ 100 rows): better compression, faster import, and empty columns are skipped entirely (detected by comparing to BC default values). Stored as a compressed TAR: one stream per column + a JSON with column definitions.
+- **MD5 check** after each file is decompressed, to guarantee integrity.
 
-![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/row-vs-column-format.webp?raw=true)
+<img src="row-vs-column-format.webp" alt="Row-oriented vs column-oriented layout" width="70%"/>
 
-### Dictionnaries
+</details>
 
-To reduce files sizes, and fasten file reading & witting, the system detect fields that can use a single byte index instead of litteral values.
-Compression algorithm are doing great at reducing redundant values, but when a field has a list of fixed values referenced many time/in many tables, it is more efficient to write the fixed list only once.
+<details>
+<summary><b>Dictionaries</b></summary>
 
-![NAV Import Data Form](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/blob/main/dict-encoding.png?raw=true)
+Compressors are great at squeezing repeated values, but when a field holds a small fixed set of values referenced thousands of times across tables, it's cheaper to write the list once and store a single-byte index everywhere else. Smaller files, faster read and write.
 
-The system detect candidat based on :
- - Option/Enum fields : whenever the option has less than 256 possibles ordinals (almost all) : replace the AL 4 bytes ordinal by a single byte index. Index to ordinal mapping are stored in "optionset.bin" (usualy ~1 KB).
- - Text/Code fields : when they have table relation in other table (foreign key), and when there is <= 254 possible values, and the foreign table contain at least >= 1.86x the parent table to make the dictionnary worth building (eg : there is 100 vendors and 500 vendor ledger entries that contain vendor "No." field).
+<img src="dict-encoding.png" alt="Dictionary encoding of repeated field values" width="70%"/>
 
-### Table chunking
+Candidates are detected automatically:
+- **Option / Enum fields** — whenever the option has fewer than 256 ordinals (almost all of them): the 4-byte AL ordinal becomes a 1-byte index. The index → ordinal map lives in `optionset.bin` (usually ~1 KB).
+- **Text / Code fields** — when the field is a table relation (foreign key) with ≤ 254 distinct values, and the referencing table has at least 1.86× more rows than the parent, so the dictionary pays for itself (e.g. 100 vendors referenced by 500 vendor ledger entries).
 
-A size limit is fixed per file in order to limit RAM usage while reading/writting, and distribute database comits on import.  
-When a stream reach the size limit, the file is closed, compressed and a new stream begin for ongoing records.  
+</details>
 
-Note that using Libbsc or kanzi compression require much free RAM, somehwere about ~5x the file size, multiplied by threads. 
-When importing, comit happen at the end of each chunk. It may happen that a large table is imported by 2+ threads at the same time.
+<details>
+<summary><b>Table chunking</b></summary>
 
+Each file has a size limit, to bound RAM while reading / writing and to spread database commits during import. When a stream reaches the limit, the file is closed and compressed and a new stream starts for the remaining records.
 
+On import, a commit happens at the end of each chunk. A large table may be imported by two or more threads at the same time.
 
+> Libbsc and kanzi need a lot of free RAM — roughly **5× the file size, per thread**.
 
+</details>
 
+---
+
+## 8. License & feedback
+
+Free and open source under the [GPL-3.0 license](LICENSE.md).
+Bug reports, feature requests and benchmark numbers from your own databases are welcome in [Issues](https://github.com/MaximeCaty/AL-Company-Data-Import-Export/issues).
